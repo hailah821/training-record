@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Training Record — Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{--blue:#1a6bbd;--blue-light:#e8f1fb;--blue-mid:#c2d9f5;--green:#16a34a;--green-light:#dcfce7;--orange:#ea580c;--orange-light:#fff1e6;--red:#dc2626;--red-light:#fee2e2;--gray-50:#f8fafc;--gray-100:#f1f5f9;--gray-200:#e2e8f0;--gray-400:#94a3b8;--gray-600:#475569;--gray-800:#1e293b;--shadow:0 1px 3px rgba(0,0,0,0.08);--shadow-md:0 4px 16px rgba(0,0,0,0.12);}
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:'DM Sans',sans-serif;background:var(--gray-50);color:var(--gray-800);min-height:100vh;}
+  .login-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#1a6bbd 0%,#0f4080 100%);}
+  .login-box{background:white;border-radius:20px;padding:40px 36px;width:400px;box-shadow:0 20px 60px rgba(0,0,0,0.2);}
+  .login-logo{text-align:center;margin-bottom:28px;}
+  .login-logo h1{font-size:20px;font-weight:800;color:var(--blue);}
+  .login-logo p{font-size:13px;color:var(--gray-400);margin-top:4px;}
+  .form-group{margin-bottom:14px;}
+  .form-label{font-size:12px;font-weight:600;color:var(--gray-600);margin-bottom:5px;display:block;}
+  .form-input{width:100%;padding:10px 14px;border:1.5px solid var(--gray-200);border-radius:10px;font-family:'DM Sans',sans-serif;font-size:14px;color:var(--gray-800);outline:none;transition:border-color 0.15s;}
+  .form-input:focus{border-color:var(--blue);}
+  .login-btn{width:100%;padding:12px;background:var(--blue);color:white;border:none;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:700;cursor:pointer;margin-top:6px;transition:background 0.15s;}
+  .login-btn:hover{background:#155fa0;}
+  .login-error{background:var(--red-light);color:var(--red);font-size:12px;font-weight:600;padding:8px 12px;border-radius:8px;margin-bottom:12px;display:none;}
+  .app{display:none;min-height:100vh;}
+  .sidebar{width:240px;background:white;border-right:1px solid var(--gray-200);display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:100;}
+  .sidebar-logo{padding:20px 20px 16px;border-bottom:1px solid var(--gray-200);}
+  .sidebar-logo h2{font-size:15px;font-weight:700;color:var(--blue);}
+  .sidebar-logo span{font-size:11px;color:var(--gray-400);}
+  .sidebar-nav{padding:12px 10px;flex:1;}
+  .nav-label{font-size:10px;font-weight:600;color:var(--gray-400);text-transform:uppercase;letter-spacing:0.8px;padding:8px 10px 4px;}
+  .nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;cursor:pointer;font-size:13.5px;font-weight:500;color:var(--gray-600);transition:all 0.15s;margin-bottom:2px;}
+  .nav-item:hover{background:var(--gray-100);color:var(--gray-800);}
+  .nav-item.active{background:var(--blue-light);color:var(--blue);}
+  .nav-badge{margin-left:auto;background:var(--blue);color:white;font-size:10px;font-weight:600;padding:1px 6px;border-radius:10px;display:none;}
+  .sidebar-footer{padding:16px;border-top:1px solid var(--gray-200);display:flex;align-items:center;gap:10px;}
+  .sidebar-avatar{width:34px;height:34px;border-radius:50%;background:var(--blue);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:white;flex-shrink:0;}
+  .sidebar-user-name{font-size:13px;font-weight:600;}
+  .sidebar-user-role{font-size:11px;color:var(--gray-400);}
+  .logout-btn{margin-left:auto;background:none;border:none;cursor:pointer;color:var(--gray-400);font-size:16px;padding:4px;}
+  .logout-btn:hover{color:var(--red);}
+  .main{margin-left:240px;flex:1;}
+  .topbar{background:white;border-bottom:1px solid var(--gray-200);padding:0 28px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;}
+  .topbar-title{font-size:15px;font-weight:600;}
+  .role-badge{font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:var(--blue-light);color:var(--blue);}
+  .page{padding:28px;display:none;}
+  .page.active{display:block;}
+  .stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px;}
+  .stat-card{background:white;border:1px solid var(--gray-200);border-radius:12px;padding:18px 20px;box-shadow:var(--shadow);}
+  .stat-label{font-size:12px;color:var(--gray-400);font-weight:500;margin-bottom:6px;}
+  .stat-val{font-size:28px;font-weight:700;color:var(--gray-800);line-height:1;}
+  .stat-sub{font-size:11px;color:var(--gray-400);margin-top:4px;}
+  .stat-card.blue .stat-val{color:var(--blue);}
+  .stat-card.green .stat-val{color:var(--green);}
+  .stat-card.orange .stat-val{color:var(--orange);}
+  .card{background:white;border:1px solid var(--gray-200);border-radius:12px;padding:20px 24px;box-shadow:var(--shadow);}
+  .section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
+  .section-title{font-size:15px;font-weight:600;}
+  .emp-table{width:100%;border-collapse:collapse;}
+  .emp-table th{text-align:left;font-size:11px;font-weight:600;color:var(--gray-400);text-transform:uppercase;letter-spacing:0.6px;padding:10px 14px;border-bottom:1px solid var(--gray-200);background:var(--gray-50);}
+  .emp-table td{padding:13px 14px;border-bottom:1px solid var(--gray-100);font-size:13.5px;vertical-align:middle;}
+  .emp-table tr:last-child td{border-bottom:none;}
+  .emp-table tr:hover td{background:var(--gray-50);}
+  .stage-track{display:flex;align-items:center;gap:3px;}
+  .stage-dot{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;border:2px solid var(--gray-200);color:var(--gray-400);background:white;}
+  .stage-dot.done{background:var(--green);border-color:var(--green);color:white;}
+  .stage-dot.current{background:var(--blue);border-color:var(--blue);color:white;}
+  .stage-dot.locked{background:var(--gray-100);border-color:var(--gray-200);color:var(--gray-300);}
+  .stage-line{width:12px;height:2px;background:var(--gray-200);}
+  .stage-line.done{background:var(--green);}
+  .badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;}
+  .badge.green{background:var(--green-light);color:var(--green);}
+  .badge.blue{background:var(--blue-light);color:var(--blue);}
+  .badge.orange{background:var(--orange-light);color:var(--orange);}
+  .badge.gray{background:var(--gray-100);color:var(--gray-400);}
+  .btn{display:inline-flex;align-items:center;gap:6px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;padding:8px 16px;border-radius:8px;border:none;cursor:pointer;transition:all 0.15s;}
+  .btn-primary{background:var(--blue);color:white;}
+  .btn-primary:hover{background:#155fa0;}
+  .btn-outline{background:white;color:var(--gray-600);border:1px solid var(--gray-200);}
+  .btn-outline:hover{background:var(--gray-50);}
+  .btn-green{background:var(--green);color:white;}
+  .btn-green:hover{background:#15803d;}
+  .btn-red{background:var(--red);color:white;}
+  .btn-red:hover{background:#b91c1c;}
+  .btn-sm{padding:5px 12px;font-size:12px;}
+  .progress-stepper{display:flex;align-items:center;background:white;border:1px solid var(--gray-200);border-radius:12px;padding:20px 28px;box-shadow:var(--shadow);margin-bottom:20px;}
+  .step{display:flex;flex-direction:column;align-items:center;flex:1;}
+  .step-circle{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;border:2px solid var(--gray-200);background:white;color:var(--gray-400);z-index:2;}
+  .step-circle.done{background:var(--green);border-color:var(--green);color:white;}
+  .step-circle.active{background:var(--blue);border-color:var(--blue);color:white;box-shadow:0 0 0 4px var(--blue-mid);}
+  .step-circle.locked{background:var(--gray-100);}
+  .step-label{font-size:11px;font-weight:600;color:var(--gray-400);margin-top:8px;text-align:center;white-space:nowrap;}
+  .step-label.done{color:var(--green);}
+  .step-label.active{color:var(--blue);}
+  .step-connector{flex:1;height:2px;background:var(--gray-200);margin-top:-24px;z-index:1;}
+  .step-connector.done{background:var(--green);}
+  .detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;}
+  .detail-card{background:white;border:1px solid var(--gray-200);border-radius:12px;padding:20px 22px;box-shadow:var(--shadow);}
+  .detail-card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+  .detail-card-title{font-size:13px;font-weight:700;display:flex;align-items:center;gap:7px;}
+  .dot{width:8px;height:8px;border-radius:50%;}
+  .dot-blue{background:var(--blue);}
+  .dot-green{background:var(--green);}
+  .dot-orange{background:var(--orange);}
+  .field-row{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--gray-100);font-size:13px;}
+  .field-row:last-child{border-bottom:none;}
+  .field-key{color:var(--gray-400);font-weight:500;}
+  .field-val{font-weight:600;}
+  .score-circle{width:72px;height:72px;border-radius:50%;border:4px solid var(--green);display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--green-light);}
+  .score-num{font-size:20px;font-weight:800;color:var(--green);line-height:1;}
+  .score-lbl{font-size:9px;font-weight:600;color:var(--green);}
+  .signed-stamp{display:inline-flex;align-items:center;gap:6px;background:var(--green-light);color:var(--green);font-size:12px;font-weight:700;padding:6px 14px;border-radius:20px;}
+  .emp-page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;}
+  .emp-page-name{font-size:20px;font-weight:700;}
+  .emp-page-meta{font-size:13px;color:var(--gray-400);margin-top:2px;}
+  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(15,23,42,0.4);z-index:200;align-items:center;justify-content:center;}
+  .modal-overlay.show{display:flex;}
+  .modal{background:white;border-radius:16px;padding:28px;width:500px;max-width:90vw;box-shadow:var(--shadow-md);animation:slideUp 0.2s ease;}
+  @keyframes slideUp{from{transform:translateY(16px);opacity:0;}to{transform:translateY(0);opacity:1;}}
+  .modal-title{font-size:16px;font-weight:700;margin-bottom:4px;}
+  .modal-sub{font-size:13px;color:var(--gray-400);margin-bottom:20px;}
+  .modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:20px;}
+  .sign-box{border:2px dashed var(--gray-200);border-radius:10px;padding:16px;text-align:center;background:var(--gray-50);margin-top:12px;}
+  .sign-box p{font-size:12px;color:var(--gray-400);margin-bottom:8px;}
+  .sign-canvas{width:100%;height:70px;background:white;border:1px solid var(--gray-200);border-radius:6px;margin-bottom:8px;cursor:crosshair;display:block;}
+  .search-input{padding:8px 12px 8px 34px;border:1px solid var(--gray-200);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;outline:none;background:var(--gray-50) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.35-4.35'/%3E%3C/svg%3E") no-repeat 10px center;width:220px;}
+  .search-input:focus{border-color:var(--blue);background-color:white;}
+  .tab-row{display:flex;gap:4px;margin-bottom:20px;}
+  .tab{padding:7px 14px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;color:var(--gray-400);transition:all 0.15s;}
+  .tab.active{background:var(--blue-light);color:var(--blue);}
+  .tab:hover:not(.active){background:var(--gray-100);color:var(--gray-600);}
+  .loading{text-align:center;padding:40px;color:var(--gray-400);font-size:14px;}
+  /* Test Questions */
+  .q-card{background:var(--gray-50);border:1px solid var(--gray-200);border-radius:10px;padding:16px;margin-bottom:12px;}
+  .q-text{font-size:13px;font-weight:600;margin-bottom:10px;}
+  .q-options{display:flex;flex-direction:column;gap:6px;}
+  .q-option{display:flex;align-items:center;gap:8px;font-size:13px;}
+  .q-option input{accent-color:var(--blue);}
+  .q-correct{display:flex;align-items:center;gap:6px;margin-top:8px;font-size:12px;color:var(--green);font-weight:600;}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="login-screen" id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">
+      <h1>Training Record System</h1>
+      <p>Admin Portal</p>
+    </div>
+    <div class="login-error" id="login-error">Invalid username or password</div>
+    <div class="form-group"><label class="form-label">Username</label><input class="form-input" id="login-user" placeholder="Admin username"></div>
+    <div class="form-group"><label class="form-label">Password</label><input class="form-input" id="login-pass" type="password" placeholder="Password" onkeydown="if(event.key==='Enter')doLogin()"></div>
+    <button class="login-btn" onclick="doLogin()">Sign In as Admin</button>
+  </div>
+</div>
+
+<!-- APP -->
+<div class="app" id="app">
+  <aside class="sidebar">
+    <div class="sidebar-logo"><h2>Training Record</h2><span>Admin Portal</span></div>
+    <nav class="sidebar-nav">
+      <div class="nav-label">Admin</div>
+      <div class="nav-item active" onclick="showPage('dashboard')" id="nav-dashboard"><span>📊</span> Dashboard <span class="nav-badge" id="pending-badge">0</span></div>
+      <div class="nav-item" onclick="showPage('employees')" id="nav-employees"><span>👥</span> Employees</div>
+      <div class="nav-item" onclick="showPage('questions')" id="nav-questions"><span>📝</span> Test Questions</div>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="sidebar-avatar">A</div>
+      <div><div class="sidebar-user-name">Admin</div><div class="sidebar-user-role">Administrator</div></div>
+      <button class="logout-btn" onclick="logout()" title="Logout">⏻</button>
+    </div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div class="topbar-title" id="page-title">Dashboard</div>
+      <span class="role-badge">Admin</span>
+    </div>
+
+    <!-- DASHBOARD -->
+    <div class="page active" id="page-dashboard">
+      <div class="stats-row">
+        <div class="stat-card"><div class="stat-label">Total Employees</div><div class="stat-val" id="stat-total">—</div><div class="stat-sub">In training program</div></div>
+        <div class="stat-card green"><div class="stat-label">Certified</div><div class="stat-val" id="stat-cert">—</div><div class="stat-sub">Fully signed off</div></div>
+        <div class="stat-card blue"><div class="stat-label">In Progress</div><div class="stat-val" id="stat-prog">—</div><div class="stat-sub">Active training</div></div>
+        <div class="stat-card orange"><div class="stat-label">Pending Sign-off</div><div class="stat-val" id="stat-pend">—</div><div class="stat-sub">Awaiting your action</div></div>
+      </div>
+      <div class="card">
+        <div class="section-header">
+          <div class="section-title">All Employees</div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <input class="search-input" placeholder="Search..." oninput="filterTable(this.value)">
+            <button class="btn btn-primary btn-sm" onclick="openAddModal()">+ Add Employee</button>
+          </div>
+        </div>
+        <div class="tab-row">
+          <div class="tab active" onclick="filterStatus('all',this)">All</div>
+          <div class="tab" onclick="filterStatus('progress',this)">In Progress</div>
+          <div class="tab" onclick="filterStatus('pending',this)">Pending Sign-off</div>
+          <div class="tab" onclick="filterStatus('certified',this)">Certified</div>
+        </div>
+        <table class="emp-table"><thead><tr><th>Employee</th><th>Department</th><th>Progress</th><th>Stage</th><th>Status</th><th>Action</th></tr></thead>
+        <tbody id="emp-tbody"><tr><td colspan="6" class="loading">Loading...</td></tr></tbody></table>
+      </div>
+    </div>
+
+    <!-- EMPLOYEES -->
+    <div class="page" id="page-employees">
+      <div class="card">
+        <div class="section-header">
+          <div class="section-title">Employee Records</div>
+          <button class="btn btn-primary btn-sm" onclick="openAddModal()">+ Add Employee</button>
+        </div>
+        <table class="emp-table"><thead><tr><th>Name</th><th>ID</th><th>Department</th><th>Title</th><th>Username</th><th>Status</th><th>Action</th></tr></thead>
+        <tbody id="emp-tbody2"><tr><td colspan="7" class="loading">Loading...</td></tr></tbody></table>
+      </div>
+    </div>
+
+    <!-- TEST QUESTIONS -->
+    <div class="page" id="page-questions">
+      <div class="card">
+        <div class="section-header">
+          <div class="section-title">Test Questions</div>
+          <button class="btn btn-primary btn-sm" onclick="openQModal()">+ Add Question</button>
+        </div>
+        <div id="questions-list"><div class="loading">Loading...</div></div>
+      </div>
+    </div>
+
+    <!-- DETAIL -->
+    <div class="page" id="page-detail">
+      <div id="detail-content"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ADD EMPLOYEE MODAL -->
+<div class="modal-overlay" id="add-modal">
+  <div class="modal">
+    <div class="modal-title">Add New Employee</div>
+    <div class="modal-sub">Create a training record and login credentials</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div class="form-group"><label class="form-label">Full Name</label><input class="form-input" id="new-name" placeholder="Full name"></div>
+      <div class="form-group"><label class="form-label">Employee ID</label><input class="form-input" id="new-empid" placeholder="e.g. EMP-007"></div>
+      <div class="form-group"><label class="form-label">Department</label><input class="form-input" id="new-dept" placeholder="e.g. Operations"></div>
+      <div class="form-group"><label class="form-label">Job Title</label><input class="form-input" id="new-title" placeholder="e.g. Technician"></div>
+      <div class="form-group"><label class="form-label">Username</label><input class="form-input" id="new-username" placeholder="Login username"></div>
+      <div class="form-group"><label class="form-label">Password</label><input class="form-input" id="new-password" type="password" placeholder="Login password"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal('add-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="addEmployee()">Add Employee</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD QUESTION MODAL -->
+<div class="modal-overlay" id="q-modal">
+  <div class="modal">
+    <div class="modal-title">Add Test Question</div>
+    <div class="modal-sub">Question will appear in the employee assessment test</div>
+    <div class="form-group"><label class="form-label">Question Text</label><input class="form-input" id="q-text" placeholder="Enter the question"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <div class="form-group"><label class="form-label">Option A</label><input class="form-input" id="q-a" placeholder="Option A"></div>
+      <div class="form-group"><label class="form-label">Option B</label><input class="form-input" id="q-b" placeholder="Option B"></div>
+      <div class="form-group"><label class="form-label">Option C</label><input class="form-input" id="q-c" placeholder="Option C"></div>
+      <div class="form-group"><label class="form-label">Option D</label><input class="form-input" id="q-d" placeholder="Option D"></div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Correct Answer</label>
+      <select class="form-input" id="q-correct">
+        <option value="A">A</option>
+        <option value="B">B</option>
+        <option value="C">C</option>
+        <option value="D">D</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal('q-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="addQuestion()">Add Question</button>
+    </div>
+  </div>
+</div>
+
+<!-- SIGN-OFF MODAL -->
+<div class="modal-overlay" id="signoff-modal">
+  <div class="modal">
+    <div class="modal-title">Manager Sign-off</div>
+    <div class="modal-sub" id="signoff-sub">Certify employee training record</div>
+    <div class="sign-box">
+      <p>Draw your signature below</p>
+      <canvas class="sign-canvas" id="sign-canvas" width="420" height="70"></canvas>
+      <button class="btn btn-outline btn-sm" onclick="clearSig()">Clear</button>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal('signoff-modal')">Cancel</button>
+      <button class="btn btn-green" onclick="confirmSignoff()">✓ Confirm Sign-off</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://vuuamwlrnyobhlxtblzk.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ1dWFtd2xybnlvYmhseHRibHprIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwNTUwODgsImV4cCI6MjA5MTYzMTA4OH0.dRmGWQZPH5pKDf6-_KqJJLzxTXMWg3uvw5CIcDwNisc';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const ADMIN_USER='admin', ADMIN_PASS='admin123';
+let allEmployees=[], currentFilter='all', searchVal='', signoffTarget=null, isDrawing=false, signCtx=null;
+const STAGES=['Test','Order 1','Order 2','Manager Sign-off','Trainee Sign-off'];
+
+// ── AUTH ─────────────────────────────────────────────────────────
+function doLogin(){
+  const u=document.getElementById('login-user').value.trim();
+  const p=document.getElementById('login-pass').value.trim();
+  if(u===ADMIN_USER&&p===ADMIN_PASS){
+    document.getElementById('login-screen').style.display='none';
+    document.getElementById('app').style.display='flex';
+    loadEmployees();
+  } else {
+    document.getElementById('login-error').style.display='block';
+  }
+}
+function logout(){
+  document.getElementById('app').style.display='none';
+  document.getElementById('login-screen').style.display='flex';
+  document.getElementById('login-user').value='';
+  document.getElementById('login-pass').value='';
+}
+
+// ── SUPABASE LOAD ─────────────────────────────────────────────────
+async function loadEmployees(){
+  const{data,error}=await sb.from('training_employees').select('*').order('created_at');
+  if(error){console.error(error);return;}
+  allEmployees=data||[];
+  renderAll();
+}
+
+// ── HELPERS ──────────────────────────────────────────────────────
+function getStatus(e){
+  if(e.trainee_signed)return{label:'Certified',cls:'green'};
+  if(e.mgr_signed)return{label:'Trainee Sign pending',cls:'blue'};
+  if(e.stage>=3)return{label:'Pending Sign-off',cls:'orange'};
+  return{label:'In Progress',cls:'blue'};
+}
+function getStageLabel(e){return['Test','Test','Order 1','Order 2','Manager Sign-off','Trainee Sign-off'][Math.min(e.stage,5)];}
+function stageTrack(e){
+  const L=['T','O1','O2','M','E'];
+  return '<div class="stage-track">'+L.map((l,i)=>{
+    const done=e.trainee_signed||(i<e.stage);
+    const cur=i===e.stage&&!e.trainee_signed;
+    const cls=done?'done':(cur?'current':'locked');
+    return `<div class="stage-dot ${cls}">${done?'✓':l}</div>`+(i<4?`<div class="stage-line ${done?'done':''}"></div>`:'');
+  }).join('')+'</div>';
+}
+
+// ── RENDER ────────────────────────────────────────────────────────
+function renderAll(){
+  const total=allEmployees.length;
+  const cert=allEmployees.filter(e=>e.trainee_signed).length;
+  const pend=allEmployees.filter(e=>e.stage>=3&&!e.mgr_signed).length;
+  document.getElementById('stat-total').textContent=total;
+  document.getElementById('stat-cert').textContent=cert;
+  document.getElementById('stat-prog').textContent=total-cert;
+  document.getElementById('stat-pend').textContent=pend;
+  const pb=document.getElementById('pending-badge');
+  pb.textContent=pend; pb.style.display=pend?'inline':'none';
+
+  let filtered=allEmployees.filter(e=>{
+    const ms=e.name.toLowerCase().includes(searchVal.toLowerCase())||e.department.toLowerCase().includes(searchVal.toLowerCase());
+    const mf=currentFilter==='all'
+      ||(currentFilter==='progress'&&!e.trainee_signed&&e.stage<3)
+      ||(currentFilter==='pending'&&e.stage>=3&&!e.mgr_signed)
+      ||(currentFilter==='certified'&&e.trainee_signed);
+    return ms&&mf;
+  });
+
+  const tb=document.getElementById('emp-tbody');
+  if(tb) tb.innerHTML=filtered.length?filtered.map(e=>`<tr>
+    <td><strong>${e.name}</strong><br><span style="font-size:11px;color:var(--gray-400)">${e.emp_id}</span></td>
+    <td>${e.department}</td><td>${stageTrack(e)}</td>
+    <td><span style="font-size:12px;font-weight:600;color:var(--gray-600)">${getStageLabel(e)}</span></td>
+    <td><span class="badge ${getStatus(e).cls}">${getStatus(e).label}</span></td>
+    <td style="display:flex;gap:4px;">
+      <button class="btn btn-outline btn-sm" onclick="viewDetail('${e.id}')">View</button>
+      ${e.stage>=3&&!e.mgr_signed?`<button class="btn btn-green btn-sm" onclick="openSignModal('${e.id}')">Sign-off</button>`:''}
+    </td></tr>`).join('')
+    :`<tr><td colspan="6" style="text-align:center;padding:32px;color:var(--gray-400)">No employees found</td></tr>`;
+
+  const tb2=document.getElementById('emp-tbody2');
+  if(tb2) tb2.innerHTML=allEmployees.map(e=>`<tr>
+    <td><strong>${e.name}</strong></td>
+    <td style="font-family:'DM Mono',monospace;font-size:12px">${e.emp_id}</td>
+    <td>${e.department}</td><td>${e.title}</td>
+    <td style="font-family:'DM Mono',monospace;font-size:12px">${e.username}</td>
+    <td><span class="badge ${getStatus(e).cls}">${getStatus(e).label}</span></td>
+    <td style="display:flex;gap:4px;">
+      <button class="btn btn-outline btn-sm" onclick="viewDetail('${e.id}')">View</button>
+      <button class="btn btn-red btn-sm" onclick="deleteEmployee('${e.id}','${e.name}')">Delete</button>
+    </td></tr>`).join('');
+}
+
+// ── VIEW DETAIL ───────────────────────────────────────────────────
+async function viewDetail(id){
+  showPage('detail');
+  const e=allEmployees.find(x=>x.id===id);
+  if(!e)return;
+
+  const steps=STAGES.map((s,i)=>{
+    const done=e.trainee_signed||(i<e.stage);
+    const cur=i===e.stage&&!e.trainee_signed;
+    const cls=done?'done':(cur?'active':'locked');
+    return `${i>0?`<div class="step-connector ${i<=e.stage||e.trainee_signed?'done':''}"></div>`:''}
+    <div class="step"><div class="step-circle ${cls}">${done?'✓':i+1}</div><div class="step-label ${cls}">${s}</div></div>`;
+  }).join('');
+
+  const testHTML=e.test_score!=null
+    ?`<div style="display:flex;align-items:center;gap:16px">
+        <div class="score-circle"><div class="score-num">${e.test_score}/10</div><div class="score-lbl">SCORE</div></div>
+        <div><div style="font-size:13px;font-weight:700;color:var(--green)">✓ Passed</div><div style="font-size:12px;color:var(--gray-400)">Min 8/10 required</div></div>
+       </div>`
+    :`<div style="text-align:center;padding:20px;color:var(--gray-400)"><div style="font-size:24px;margin-bottom:6px">📝</div><div>Test not taken yet</div></div>`;
+
+  const orderHTML=(done,num,date,task)=>done
+    ?`<div class="field-row"><span class="field-key">Status</span><span class="field-val"><span class="badge green">✓ Confirmed</span></span></div>
+       <div class="field-row"><span class="field-key">Task</span><span class="field-val">${task||'—'}</span></div>
+       <div class="field-row"><span class="field-key">Date</span><span class="field-val">${date||'—'}</span></div>`
+    :`<div style="text-align:center;padding:16px;color:var(--gray-400)"><div style="font-size:13px">Not submitted yet</div></div>`;
+
+  document.getElementById('detail-content').innerHTML=`
+    <div class="emp-page-header">
+      <div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <button class="btn btn-outline btn-sm" onclick="showPage('dashboard')">← Back</button>
+          <div class="emp-page-name">${e.name}</div>
+        </div>
+        <div class="emp-page-meta">${e.emp_id} · ${e.title} · ${e.department}</div>
+      </div>
+      <span class="badge ${getStatus(e).cls}" style="font-size:13px;padding:6px 14px">${getStatus(e).label}</span>
+    </div>
+    <div class="progress-stepper">${steps}</div>
+    <div class="detail-grid">
+      <div class="detail-card">
+        <div class="detail-card-header"><div class="detail-card-title"><div class="dot dot-blue"></div>Assessment Test</div></div>
+        ${testHTML}
+      </div>
+      <div class="detail-card">
+        <div class="detail-card-header"><div class="detail-card-title"><div class="dot dot-orange"></div>Order 1</div>${e.order1_done?'<span class="badge green">Confirmed</span>':'<span class="badge gray">Pending</span>'}</div>
+        ${orderHTML(e.order1_done,1,e.order1_date,e.order1_task)}
+      </div>
+    </div>
+    <div class="detail-grid">
+      <div class="detail-card">
+        <div class="detail-card-header"><div class="detail-card-title"><div class="dot dot-orange"></div>Order 2</div>${e.order2_done?'<span class="badge green">Confirmed</span>':'<span class="badge gray">Pending</span>'}</div>
+        ${orderHTML(e.order2_done,2,e.order2_date,e.order2_task)}
+      </div>
+      <div class="detail-card">
+        <div class="detail-card-header"><div class="detail-card-title"><div class="dot dot-green"></div>Sign-off</div></div>
+        <div class="field-row"><span class="field-key">Manager Sign-off</span><span class="field-val">${e.mgr_signed?`<span class="signed-stamp">✓ Signed ${e.mgr_signed_at?new Date(e.mgr_signed_at).toLocaleDateString():''}</span>`:(e.stage>=3?`<button class="btn btn-green btn-sm" onclick="openSignModal('${e.id}')">Sign as Manager</button>`:'<span style="font-size:12px;color:var(--gray-400)">Awaiting previous stages</span>')}</span></div>
+        <div class="field-row"><span class="field-key">Trainee Sign-off</span><span class="field-val">${e.trainee_signed?`<span class="signed-stamp">✓ Signed ${e.trainee_signed_at?new Date(e.trainee_signed_at).toLocaleDateString():''}</span>`:'<span style="font-size:12px;color:var(--gray-400)">Pending trainee action</span>'}</span></div>
+      </div>
+    </div>`;
+}
+
+// ── ADD EMPLOYEE ──────────────────────────────────────────────────
+function openAddModal(){document.getElementById('add-modal').classList.add('show');}
+function closeModal(id){document.getElementById(id).classList.remove('show');}
+
+async function addEmployee(){
+  const name=document.getElementById('new-name').value.trim();
+  const emp_id=document.getElementById('new-empid').value.trim();
+  const department=document.getElementById('new-dept').value.trim();
+  const title=document.getElementById('new-title').value.trim();
+  const username=document.getElementById('new-username').value.trim();
+  const password=document.getElementById('new-password').value.trim();
+  if(!name||!emp_id||!department||!title||!username||!password){alert('Please fill all fields');return;}
+
+  const{error}=await sb.from('training_employees').insert([{name,emp_id,department,title,username,password,stage:0}]);
+  if(error){alert('Error: '+error.message);return;}
+
+  closeModal('add-modal');
+  ['new-name','new-empid','new-dept','new-title','new-username','new-password'].forEach(i=>document.getElementById(i).value='');
+  await loadEmployees();
+  alert(`✓ ${name} added!\nLogin: ${username} / ${password}`);
+}
+
+async function deleteEmployee(id,name){
+  if(!confirm(`Delete ${name}? This cannot be undone.`))return;
+  const{error}=await sb.from('training_employees').delete().eq('id',id);
+  if(error){alert('Error: '+error.message);return;}
+  await loadEmployees();
+}
+
+// ── SIGN-OFF ──────────────────────────────────────────────────────
+function openSignModal(id){
+  signoffTarget=id;
+  const e=allEmployees.find(x=>x.id===id);
+  document.getElementById('signoff-sub').textContent=`Certifying: ${e.name}`;
+  document.getElementById('signoff-modal').classList.add('show');
+  setTimeout(()=>{
+    const canvas=document.getElementById('sign-canvas');
+    signCtx=canvas.getContext('2d');
+    signCtx.strokeStyle='#1a6bbd';signCtx.lineWidth=2;signCtx.lineCap='round';
+    canvas.onmousedown=ev=>{isDrawing=true;signCtx.beginPath();signCtx.moveTo(ev.offsetX,ev.offsetY);};
+    canvas.onmousemove=ev=>{if(!isDrawing)return;signCtx.lineTo(ev.offsetX,ev.offsetY);signCtx.stroke();};
+    canvas.onmouseup=()=>isDrawing=false;
+    canvas.onmouseleave=()=>isDrawing=false;
+  },50);
+}
+function clearSig(){if(signCtx){const c=document.getElementById('sign-canvas');signCtx.clearRect(0,0,c.width,c.height);}}
+
+async function confirmSignoff(){
+  const{error}=await sb.from('training_employees').update({mgr_signed:true,stage:4,mgr_signed_at:new Date().toISOString()}).eq('id',signoffTarget);
+  if(error){alert('Error: '+error.message);return;}
+  closeModal('signoff-modal');
+  await loadEmployees();
+  const e=allEmployees.find(x=>x.id===signoffTarget);
+  alert(`✓ Sign-off confirmed!`);
+  viewDetail(signoffTarget);
+}
+
+// ── TEST QUESTIONS ────────────────────────────────────────────────
+async function loadQuestions(){
+  const{data,error}=await sb.from('training_questions').select('*').order('created_at');
+  const list=document.getElementById('questions-list');
+  if(error){
+    list.innerHTML=`<div style="text-align:center;padding:20px;color:var(--gray-400)">
+      <p>Table not found. Run this SQL in Supabase to create it:</p>
+      <pre style="background:var(--gray-50);padding:12px;border-radius:8px;font-size:11px;margin-top:10px;text-align:left">CREATE TABLE training_questions (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  question TEXT NOT NULL,
+  option_a TEXT NOT NULL,
+  option_b TEXT NOT NULL,
+  option_c TEXT NOT NULL,
+  option_d TEXT NOT NULL,
+  correct_answer TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);</pre></div>`;
+    return;
+  }
+  if(!data||data.length===0){list.innerHTML='<div class="loading">No questions yet. Add your first question!</div>';return;}
+  list.innerHTML=data.map((q,i)=>`
+    <div class="q-card">
+      <div style="display:flex;justify-content:space-between;align-items:start;">
+        <div class="q-text">Q${i+1}. ${q.question}</div>
+        <button class="btn btn-red btn-sm" onclick="deleteQuestion('${q.id}')">Delete</button>
+      </div>
+      <div class="q-options">
+        ${['A','B','C','D'].map(opt=>`<div class="q-option"><span style="font-weight:700;color:var(--blue);min-width:20px">${opt}.</span> ${q['option_'+opt.toLowerCase()]}</div>`).join('')}
+      </div>
+      <div class="q-correct">✓ Correct: ${q.correct_answer}</div>
+    </div>`).join('');
+}
+
+function openQModal(){document.getElementById('q-modal').classList.add('show');}
+
+async function addQuestion(){
+  const question=document.getElementById('q-text').value.trim();
+  const option_a=document.getElementById('q-a').value.trim();
+  const option_b=document.getElementById('q-b').value.trim();
+  const option_c=document.getElementById('q-c').value.trim();
+  const option_d=document.getElementById('q-d').value.trim();
+  const correct_answer=document.getElementById('q-correct').value;
+  if(!question||!option_a||!option_b||!option_c||!option_d){alert('Please fill all fields');return;}
+  const{error}=await sb.from('training_questions').insert([{question,option_a,option_b,option_c,option_d,correct_answer}]);
+  if(error){alert('Error: '+error.message);return;}
+  closeModal('q-modal');
+  ['q-text','q-a','q-b','q-c','q-d'].forEach(i=>document.getElementById(i).value='');
+  loadQuestions();
+}
+
+async function deleteQuestion(id){
+  if(!confirm('Delete this question?'))return;
+  await sb.from('training_questions').delete().eq('id',id);
+  loadQuestions();
+}
+
+// ── NAV ───────────────────────────────────────────────────────────
+function showPage(name){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  const nav=document.getElementById('nav-'+name);
+  if(nav)nav.classList.add('active');
+  document.getElementById('page-title').textContent={dashboard:'Dashboard',employees:'Employees',questions:'Test Questions',detail:'Employee Detail'}[name]||name;
+  if(name==='dashboard'||name==='employees')loadEmployees();
+  if(name==='questions')loadQuestions();
+}
+
+function filterTable(v){searchVal=v;renderAll();}
+function filterStatus(f,el){currentFilter=f;document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));el.classList.add('active');renderAll();}
+
+document.getElementById('login-screen').style.display='flex';
+document.getElementById('app').style.display='none';
+</script>
+</body>
+</html>

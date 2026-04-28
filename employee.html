@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Training Record — Employee</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{--blue:#1a6bbd;--blue-light:#e8f1fb;--blue-mid:#c2d9f5;--green:#16a34a;--green-light:#dcfce7;--orange:#ea580c;--orange-light:#fff1e6;--red:#dc2626;--red-light:#fee2e2;--gray-50:#f8fafc;--gray-100:#f1f5f9;--gray-200:#e2e8f0;--gray-400:#94a3b8;--gray-600:#475569;--gray-800:#1e293b;--shadow:0 1px 3px rgba(0,0,0,0.08);--shadow-md:0 4px 16px rgba(0,0,0,0.12);}
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:'DM Sans',sans-serif;background:var(--gray-50);color:var(--gray-800);min-height:100vh;}
+  .login-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#1a6bbd 0%,#0f4080 100%);}
+  .login-box{background:white;border-radius:20px;padding:40px 36px;width:400px;box-shadow:0 20px 60px rgba(0,0,0,0.2);}
+  .login-logo{text-align:center;margin-bottom:28px;}
+  .login-logo h1{font-size:20px;font-weight:800;color:var(--blue);}
+  .login-logo p{font-size:13px;color:var(--gray-400);margin-top:4px;}
+  .form-group{margin-bottom:14px;}
+  .form-label{font-size:12px;font-weight:600;color:var(--gray-600);margin-bottom:5px;display:block;}
+  .form-input{width:100%;padding:10px 14px;border:1.5px solid var(--gray-200);border-radius:10px;font-family:'DM Sans',sans-serif;font-size:14px;color:var(--gray-800);outline:none;transition:border-color 0.15s;}
+  .form-input:focus{border-color:var(--blue);}
+  .login-btn{width:100%;padding:12px;background:var(--blue);color:white;border:none;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:700;cursor:pointer;margin-top:6px;transition:background 0.15s;}
+  .login-btn:hover{background:#155fa0;}
+  .login-error{background:var(--red-light);color:var(--red);font-size:12px;font-weight:600;padding:8px 12px;border-radius:8px;margin-bottom:12px;display:none;}
+  .app{display:none;min-height:100vh;}
+  .topbar{background:white;border-bottom:1px solid var(--gray-200);padding:0 28px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;}
+  .topbar-left{display:flex;align-items:center;gap:12px;}
+  .topbar-logo{font-size:14px;font-weight:700;color:var(--blue);}
+  .topbar-right{display:flex;align-items:center;gap:12px;}
+  .avatar{width:32px;height:32px;border-radius:50%;background:var(--blue);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:white;}
+  .user-name{font-size:13px;font-weight:600;}
+  .logout-btn{background:none;border:none;cursor:pointer;color:var(--gray-400);font-size:13px;font-weight:600;padding:6px 12px;border-radius:8px;transition:all 0.15s;}
+  .logout-btn:hover{background:var(--red-light);color:var(--red);}
+  .content{max-width:900px;margin:0 auto;padding:28px;}
+  .progress-stepper{display:flex;align-items:center;background:white;border:1px solid var(--gray-200);border-radius:12px;padding:20px 28px;box-shadow:var(--shadow);margin-bottom:24px;}
+  .step{display:flex;flex-direction:column;align-items:center;flex:1;}
+  .step-circle{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;border:2px solid var(--gray-200);background:white;color:var(--gray-400);z-index:2;}
+  .step-circle.done{background:var(--green);border-color:var(--green);color:white;}
+  .step-circle.active{background:var(--blue);border-color:var(--blue);color:white;box-shadow:0 0 0 4px var(--blue-mid);}
+  .step-circle.locked{background:var(--gray-100);}
+  .step-label{font-size:11px;font-weight:600;color:var(--gray-400);margin-top:8px;text-align:center;white-space:nowrap;}
+  .step-label.done{color:var(--green);}
+  .step-label.active{color:var(--blue);}
+  .step-connector{flex:1;height:2px;background:var(--gray-200);margin-top:-24px;z-index:1;}
+  .step-connector.done{background:var(--green);}
+  .detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;}
+  .detail-card{background:white;border:1px solid var(--gray-200);border-radius:12px;padding:20px 22px;box-shadow:var(--shadow);}
+  .detail-card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+  .detail-card-title{font-size:13px;font-weight:700;display:flex;align-items:center;gap:7px;}
+  .dot{width:8px;height:8px;border-radius:50%;}
+  .dot-blue{background:var(--blue);}
+  .dot-green{background:var(--green);}
+  .dot-orange{background:var(--orange);}
+  .field-row{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--gray-100);font-size:13px;}
+  .field-row:last-child{border-bottom:none;}
+  .field-key{color:var(--gray-400);font-weight:500;}
+  .field-val{font-weight:600;}
+  .badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;}
+  .badge.green{background:var(--green-light);color:var(--green);}
+  .badge.blue{background:var(--blue-light);color:var(--blue);}
+  .badge.orange{background:var(--orange-light);color:var(--orange);}
+  .badge.gray{background:var(--gray-100);color:var(--gray-400);}
+  .btn{display:inline-flex;align-items:center;gap:6px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;padding:8px 16px;border-radius:8px;border:none;cursor:pointer;transition:all 0.15s;}
+  .btn-primary{background:var(--blue);color:white;}
+  .btn-primary:hover{background:#155fa0;}
+  .btn-green{background:var(--green);color:white;}
+  .btn-green:hover{background:#15803d;}
+  .btn-outline{background:white;color:var(--gray-600);border:1px solid var(--gray-200);}
+  .btn-sm{padding:5px 12px;font-size:12px;}
+  .score-circle{width:72px;height:72px;border-radius:50%;border:4px solid var(--green);display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--green-light);}
+  .score-num{font-size:20px;font-weight:800;color:var(--green);line-height:1;}
+  .score-lbl{font-size:9px;font-weight:600;color:var(--green);}
+  .signed-stamp{display:inline-flex;align-items:center;gap:6px;background:var(--green-light);color:var(--green);font-size:12px;font-weight:700;padding:6px 14px;border-radius:20px;}
+  .cert-banner{background:linear-gradient(135deg,var(--green) 0%,#15803d 100%);border-radius:12px;padding:24px 28px;color:white;margin-bottom:24px;display:flex;align-items:center;gap:16px;}
+  .cert-icon{font-size:40px;}
+  .cert-title{font-size:18px;font-weight:800;}
+  .cert-sub{font-size:13px;opacity:0.85;margin-top:3px;}
+  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(15,23,42,0.4);z-index:200;align-items:center;justify-content:center;}
+  .modal-overlay.show{display:flex;}
+  .modal{background:white;border-radius:16px;padding:28px;width:500px;max-width:90vw;box-shadow:var(--shadow-md);animation:slideUp 0.2s ease;}
+  @keyframes slideUp{from{transform:translateY(16px);opacity:0;}to{transform:translateY(0);opacity:1;}}
+  .modal-title{font-size:16px;font-weight:700;margin-bottom:4px;}
+  .modal-sub{font-size:13px;color:var(--gray-400);margin-bottom:20px;}
+  .modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:20px;}
+  .sign-box{border:2px dashed var(--gray-200);border-radius:10px;padding:16px;text-align:center;background:var(--gray-50);margin-top:12px;}
+  .sign-box p{font-size:12px;color:var(--gray-400);margin-bottom:8px;}
+  .sign-canvas{width:100%;height:70px;background:white;border:1px solid var(--gray-200);border-radius:6px;margin-bottom:8px;cursor:crosshair;display:block;}
+  /* TEST */
+  .test-card{background:white;border:1px solid var(--gray-200);border-radius:12px;padding:24px;box-shadow:var(--shadow);margin-bottom:16px;}
+  .test-q{font-size:14px;font-weight:600;margin-bottom:14px;}
+  .test-options{display:flex;flex-direction:column;gap:8px;}
+  .test-option{display:flex;align-items:center;gap:10px;padding:10px 14px;border:1.5px solid var(--gray-200);border-radius:8px;cursor:pointer;transition:all 0.15s;font-size:13px;}
+  .test-option:hover{border-color:var(--blue);background:var(--blue-light);}
+  .test-option.selected{border-color:var(--blue);background:var(--blue-light);}
+  .test-option input{accent-color:var(--blue);}
+  /* ORDER FORM */
+  .order-form{margin-top:12px;}
+</style>
+</head>
+<body>
+
+<div class="login-screen" id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">
+      <h1>Training Record System</h1>
+      <p>Employee Portal</p>
+    </div>
+    <div class="login-error" id="login-error">Invalid username or password</div>
+    <div class="form-group"><label class="form-label">Username</label><input class="form-input" id="login-user" placeholder="Your username"></div>
+    <div class="form-group"><label class="form-label">Password</label><input class="form-input" id="login-pass" type="password" placeholder="Your password" onkeydown="if(event.key==='Enter')doLogin()"></div>
+    <button class="login-btn" onclick="doLogin()">Sign In</button>
+  </div>
+</div>
+
+<div class="app" id="app">
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="topbar-logo">Training Record</div>
+      <div style="width:1px;height:20px;background:var(--gray-200)"></div>
+      <span style="font-size:13px;color:var(--gray-600);font-weight:500;">My Training Record</span>
+    </div>
+    <div class="topbar-right">
+      <div class="avatar" id="user-avatar">K</div>
+      <div class="user-name" id="user-name">Employee</div>
+      <button class="logout-btn" onclick="logout()">Sign Out</button>
+    </div>
+  </div>
+  <div class="content" id="main-content"><div style="text-align:center;padding:40px;color:var(--gray-400)">Loading...</div></div>
+</div>
+
+<!-- TRAINEE SIGN MODAL -->
+<div class="modal-overlay" id="sign-modal">
+  <div class="modal">
+    <div class="modal-title">Trainee Sign-off</div>
+    <div class="modal-sub">Sign to confirm you have completed your training program</div>
+    <div class="sign-box">
+      <p>Draw your signature below</p>
+      <canvas class="sign-canvas" id="sign-canvas" width="420" height="70"></canvas>
+      <button class="btn btn-outline btn-sm" onclick="clearSig()">Clear</button>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeSignModal()">Cancel</button>
+      <button class="btn btn-green" onclick="confirmTraineeSign()">✓ Submit My Signature</button>
+    </div>
+  </div>
+</div>
+
+<!-- ORDER MODAL -->
+<div class="modal-overlay" id="order-modal">
+  <div class="modal">
+    <div class="modal-title" id="order-modal-title">Submit Work Order</div>
+    <div class="modal-sub">Fill in the details of your practical work order</div>
+    <div class="form-group"><label class="form-label">Task Description</label><input class="form-input" id="order-task" placeholder="Describe what you did"></div>
+    <div class="form-group"><label class="form-label">Date of Execution</label><input class="form-input" id="order-date" type="date"></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeOrderModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="submitOrderForm()">Submit Order</button>
+    </div>
+  </div>
+</div>
+
+<!-- TEST MODAL -->
+<div class="modal-overlay" id="test-modal">
+  <div class="modal" style="width:600px;">
+    <div class="modal-title">Assessment Test</div>
+    <div class="modal-sub">Answer at least 8 out of 10 questions correctly to pass</div>
+    <div id="test-questions-container"></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeTestModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="submitTest()">Submit Test</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL='https://vuuamwlrnyobhlxtblzk.supabase.co';
+const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ1dWFtd2xybnlvYmhseHRibHprIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwNTUwODgsImV4cCI6MjA5MTYzMTA4OH0.dRmGWQZPH5pKDf6-_KqJJLzxTXMWg3uvw5CIcDwNisc';
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+
+let currentEmp=null, isDrawing=false, signCtx=null, currentOrder=0, testQuestions=[], testAnswers={};
+const STAGES=['Test','Order 1','Order 2','Manager Sign-off','Trainee Sign-off'];
+
+async function doLogin(){
+  const u=document.getElementById('login-user').value.trim();
+  const p=document.getElementById('login-pass').value.trim();
+  const{data,error}=await sb.from('training_employees').select('*').eq('username',u).eq('password',p).single();
+  if(error||!data){document.getElementById('login-error').style.display='block';return;}
+  currentEmp=data;
+  document.getElementById('login-screen').style.display='none';
+  document.getElementById('app').style.display='block';
+  document.getElementById('user-avatar').textContent=currentEmp.name.charAt(0).toUpperCase();
+  document.getElementById('user-name').textContent=currentEmp.name.split(' ')[0];
+  renderTraining();
+}
+
+function logout(){
+  currentEmp=null;
+  document.getElementById('app').style.display='none';
+  document.getElementById('login-screen').style.display='flex';
+  document.getElementById('login-user').value='';
+  document.getElementById('login-pass').value='';
+}
+
+async function refreshEmp(){
+  const{data}=await sb.from('training_employees').select('*').eq('id',currentEmp.id).single();
+  if(data)currentEmp=data;
+}
+
+function getStatus(e){
+  if(e.trainee_signed)return{label:'Certified',cls:'green'};
+  if(e.mgr_signed)return{label:'Awaiting Your Signature',cls:'blue'};
+  if(e.stage>=3)return{label:'Awaiting Manager Sign-off',cls:'orange'};
+  return{label:'In Progress',cls:'blue'};
+}
+
+function renderTraining(){
+  const e=currentEmp;
+  const st=getStatus(e);
+
+  const certBanner=e.trainee_signed?`
+    <div class="cert-banner">
+      <div class="cert-icon">🏆</div>
+      <div><div class="cert-title">Training Complete — Certified!</div>
+      <div class="cert-sub">Congratulations ${e.name.split(' ')[0]}! You have successfully completed all training stages.</div></div>
+    </div>`:'';
+
+  const steps=STAGES.map((s,i)=>{
+    const done=e.trainee_signed||(i<e.stage);
+    const cur=i===e.stage&&!e.trainee_signed;
+    const cls=done?'done':(cur?'active':'locked');
+    return `${i>0?`<div class="step-connector ${i<=e.stage||e.trainee_signed?'done':''}"></div>`:''}
+    <div class="step"><div class="step-circle ${cls}">${done?'✓':i+1}</div><div class="step-label ${cls}">${s}</div></div>`;
+  }).join('');
+
+  const testHTML=e.test_score!=null
+    ?`<div style="display:flex;align-items:center;gap:16px">
+        <div class="score-circle"><div class="score-num">${e.test_score}/10</div><div class="score-lbl">SCORE</div></div>
+        <div><div style="font-size:13px;font-weight:700;color:var(--green)">✓ Passed</div><div style="font-size:12px;color:var(--gray-400);margin-top:2px">Min 8/10 required</div></div>
+       </div>`
+    :(e.stage===0
+      ?`<div style="text-align:center;padding:20px;">
+          <div style="font-size:24px;margin-bottom:8px">📝</div>
+          <div style="font-size:13px;color:var(--gray-600);margin-bottom:12px">Ready to take your assessment test?</div>
+          <button class="btn btn-primary" onclick="openTest()">Start Test</button>
+        </div>`
+      :`<div style="text-align:center;padding:20px;color:var(--gray-400)"><div style="font-size:13px">Test not taken yet</div></div>`);
+
+  const orderHTML=(done,num,canDo,date,task)=>done
+    ?`<div class="field-row"><span class="field-key">Status</span><span class="field-val"><span class="badge green">✓ Confirmed</span></span></div>
+       <div class="field-row"><span class="field-key">Task</span><span class="field-val">${task||'—'}</span></div>
+       <div class="field-row"><span class="field-key">Date</span><span class="field-val">${date||'—'}</span></div>`
+    :(canDo
+      ?`<div style="text-align:center;padding:16px;">
+          <div style="font-size:13px;color:var(--gray-600);margin-bottom:10px">Submit your Order ${num} work record</div>
+          <button class="btn btn-primary btn-sm" onclick="openOrderModal(${num})">Submit Order ${num}</button>
+        </div>`
+      :`<div style="text-align:center;padding:16px;color:var(--gray-400)"><div style="font-size:13px">Complete previous stages first</div></div>`);
+
+  const mgrSign=e.mgr_signed
+    ?`<span class="signed-stamp">✓ Manager Signed${e.mgr_signed_at?' — '+new Date(e.mgr_signed_at).toLocaleDateString():''}</span>`
+    :`<span style="font-size:12px;color:var(--gray-400)">${e.stage>=3?'Awaiting manager action':'Pending previous stages'}</span>`;
+
+  const traineeSign=e.trainee_signed
+    ?`<span class="signed-stamp">✓ You Signed${e.trainee_signed_at?' — '+new Date(e.trainee_signed_at).toLocaleDateString():''}</span>`
+    :(e.mgr_signed
+      ?`<button class="btn btn-green" onclick="openSignModal()">✍️ Sign to Complete Training</button>`
+      :`<span style="font-size:12px;color:var(--gray-400)">Awaiting manager sign-off</span>`);
+
+  document.getElementById('main-content').innerHTML=`
+    ${certBanner}
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+      <div>
+        <div style="font-size:20px;font-weight:700;">${e.name}</div>
+        <div style="font-size:13px;color:var(--gray-400);margin-top:2px">${e.emp_id} · ${e.title} · ${e.department}</div>
+      </div>
+      <span class="badge ${st.cls}" style="font-size:13px;padding:6px 14px">${st.label}</span>
+    </div>
+    <div class="progress-stepper">${steps}</div>
+    <div class="detail-grid">
+      <div class="detail-card">
+        <div class="detail-card-header"><div class="detail-card-title"><div class="dot dot-blue"></div>Assessment Test</div></div>
+        ${testHTML}
+      </div>
+      <div class="detail-card">
+        <div class="detail-card-header"><div class="detail-card-title"><div class="dot dot-orange"></div>Order 1</div>${e.order1_done?'<span class="badge green">Confirmed</span>':'<span class="badge gray">Pending</span>'}</div>
+        ${orderHTML(e.order1_done,1,e.stage===1,e.order1_date,e.order1_task)}
+      </div>
+    </div>
+    <div class="detail-grid">
+      <div class="detail-card">
+        <div class="detail-card-header"><div class="detail-card-title"><div class="dot dot-orange"></div>Order 2</div>${e.order2_done?'<span class="badge green">Confirmed</span>':'<span class="badge gray">Pending</span>'}</div>
+        ${orderHTML(e.order2_done,2,e.stage===2,e.order2_date,e.order2_task)}
+      </div>
+      <div class="detail-card">
+        <div class="detail-card-header"><div class="detail-card-title"><div class="dot dot-green"></div>Sign-off</div></div>
+        <div class="field-row"><span class="field-key">Manager Sign-off</span><span class="field-val">${mgrSign}</span></div>
+        <div class="field-row"><span class="field-key">My Sign-off</span><span class="field-val">${traineeSign}</span></div>
+      </div>
+    </div>`;
+}
+
+// ── TEST ──────────────────────────────────────────────────────────
+async function openTest(){
+  const{data,error}=await sb.from('training_questions').select('*');
+  if(error||!data||data.length===0){
+    alert('No test questions available yet. Please contact your training manager.');
+    return;
+  }
+  testQuestions=data.sort(()=>Math.random()-0.5).slice(0,10);
+  testAnswers={};
+  document.getElementById('test-questions-container').innerHTML=testQuestions.map((q,i)=>`
+    <div class="test-card">
+      <div class="test-q">Q${i+1}. ${q.question}</div>
+      <div class="test-options">
+        ${['A','B','C','D'].map(opt=>`
+          <label class="test-option" id="opt-${i}-${opt}">
+            <input type="radio" name="q${i}" value="${opt}" onchange="selectAnswer(${i},'${opt}')">
+            <strong>${opt}.</strong> ${q['option_'+opt.toLowerCase()]}
+          </label>`).join('')}
+      </div>
+    </div>`).join('');
+  document.getElementById('test-modal').classList.add('show');
+}
+
+function selectAnswer(qi,opt){
+  testAnswers[qi]=opt;
+  ['A','B','C','D'].forEach(o=>{
+    const el=document.getElementById(`opt-${qi}-${o}`);
+    if(el)el.classList.toggle('selected',o===opt);
+  });
+}
+
+function closeTestModal(){document.getElementById('test-modal').classList.remove('show');}
+
+async function submitTest(){
+  const answered=Object.keys(testAnswers).length;
+  if(answered<testQuestions.length){
+    alert(`Please answer all questions (${answered}/${testQuestions.length} answered)`);
+    return;
+  }
+  let correct=0;
+  testQuestions.forEach((q,i)=>{if(testAnswers[i]===q.correct_answer)correct++;});
+  if(correct<8){
+    alert(`You scored ${correct}/10. You need at least 8/10 to pass. Please try again.`);
+    closeTestModal();
+    return;
+  }
+  const{error}=await sb.from('training_employees').update({test_score:correct,stage:1}).eq('id',currentEmp.id);
+  if(error){alert('Error saving result: '+error.message);return;}
+  closeTestModal();
+  await refreshEmp();
+  alert(`✓ Test passed! Score: ${correct}/10`);
+  renderTraining();
+}
+
+// ── ORDER ─────────────────────────────────────────────────────────
+function openOrderModal(num){
+  currentOrder=num;
+  document.getElementById('order-modal-title').textContent=`Submit Work Order ${num}`;
+  document.getElementById('order-task').value='';
+  document.getElementById('order-date').value=new Date().toISOString().split('T')[0];
+  document.getElementById('order-modal').classList.add('show');
+}
+function closeOrderModal(){document.getElementById('order-modal').classList.remove('show');}
+
+async function submitOrderForm(){
+  const task=document.getElementById('order-task').value.trim();
+  const date=document.getElementById('order-date').value;
+  if(!task||!date){alert('Please fill all fields');return;}
+  const updates=currentOrder===1
+    ?{order1_done:true,order1_task:task,order1_date:date,stage:2}
+    :{order2_done:true,order2_task:task,order2_date:date,stage:3};
+  const{error}=await sb.from('training_employees').update(updates).eq('id',currentEmp.id);
+  if(error){alert('Error: '+error.message);return;}
+  closeOrderModal();
+  await refreshEmp();
+  alert(`✓ Order ${currentOrder} submitted and confirmed!`);
+  renderTraining();
+}
+
+// ── SIGN ──────────────────────────────────────────────────────────
+function openSignModal(){
+  document.getElementById('sign-modal').classList.add('show');
+  setTimeout(()=>{
+    const canvas=document.getElementById('sign-canvas');
+    signCtx=canvas.getContext('2d');
+    signCtx.strokeStyle='#1a6bbd';signCtx.lineWidth=2;signCtx.lineCap='round';
+    canvas.onmousedown=ev=>{isDrawing=true;signCtx.beginPath();signCtx.moveTo(ev.offsetX,ev.offsetY);};
+    canvas.onmousemove=ev=>{if(!isDrawing)return;signCtx.lineTo(ev.offsetX,ev.offsetY);signCtx.stroke();};
+    canvas.onmouseup=()=>isDrawing=false;
+    canvas.onmouseleave=()=>isDrawing=false;
+  },50);
+}
+function closeSignModal(){document.getElementById('sign-modal').classList.remove('show');}
+function clearSig(){if(signCtx){const c=document.getElementById('sign-canvas');signCtx.clearRect(0,0,c.width,c.height);}}
+
+async function confirmTraineeSign(){
+  const{error}=await sb.from('training_employees').update({trainee_signed:true,stage:5,trainee_signed_at:new Date().toISOString()}).eq('id',currentEmp.id);
+  if(error){alert('Error: '+error.message);return;}
+  closeSignModal();
+  await refreshEmp();
+  alert('🏆 Congratulations! Your training is officially certified!');
+  renderTraining();
+}
+
+document.getElementById('login-screen').style.display='flex';
+document.getElementById('app').style.display='none';
+</script>
+</body>
+</html>

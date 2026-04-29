@@ -473,6 +473,7 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const ADMIN_USER='admin', ADMIN_PASS='admin123';
 let allEmployees=[], currentFilter='all', searchVal='', signoffTarget=null, isDrawing=false, signCtx=null;
+let allPlans=[], currentPlanId=null, weekTarget=null, memberTarget=null;
 const STAGES=['Test','Order 1','Order 2','Manager Sign-off','Trainee Sign-off'];
 
 // ── AUTH ─────────────────────────────────────────────────────────
@@ -488,7 +489,8 @@ async function loadAll() {
     sb.from('training_employees').select('id,name,emp_id').order('name')
   ]);
   allPlans = plansRes.data || [];
-  allEmployees = empsRes.data || [];
+  // Don't override allEmployees - merge instead
+  if(empsRes.data) allEmployees = empsRes.data;
 
   // Load members for each plan
   for (const p of allPlans) {
@@ -761,7 +763,8 @@ async function loadAll() {
     sb.from('training_employees').select('id,name,emp_id').order('name')
   ]);
   allPlans = plansRes.data || [];
-  allEmployees = empsRes.data || [];
+  // Don't override allEmployees - merge instead
+  if(empsRes.data) allEmployees = empsRes.data;
 
   // Load members for each plan
   for (const p of allPlans) {
@@ -1293,7 +1296,8 @@ async function loadAll() {
     sb.from('training_employees').select('id,name,emp_id').order('name')
   ]);
   allPlans = plansRes.data || [];
-  allEmployees = empsRes.data || [];
+  // Don't override allEmployees - merge instead
+  if(empsRes.data) allEmployees = empsRes.data;
 
   // Load members for each plan
   for (const p of allPlans) {
@@ -1560,7 +1564,8 @@ async function loadAll() {
     sb.from('training_employees').select('id,name,emp_id').order('name')
   ]);
   allPlans = plansRes.data || [];
-  allEmployees = empsRes.data || [];
+  // Don't override allEmployees - merge instead
+  if(empsRes.data) allEmployees = empsRes.data;
 
   // Load members for each plan
   for (const p of allPlans) {

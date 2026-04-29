@@ -7,10 +7,10 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
-  :root{--blue:#1a6bbd;--blue-light:#e8f1fb;--blue-mid:#c2d9f5;--green:#16a34a;--green-light:#dcfce7;--orange:#ea580c;--orange-light:#fff1e6;--red:#dc2626;--red-light:#fee2e2;--gray-50:#f8fafc;--gray-100:#f1f5f9;--gray-200:#e2e8f0;--gray-400:#94a3b8;--gray-600:#475569;--gray-800:#1e293b;--shadow:0 1px 3px rgba(0,0,0,0.08);--shadow-md:0 4px 16px rgba(0,0,0,0.12);}
+  :root{--blue:#484888;--blue-light:#EEEEF5;--blue-mid:#C8C8E0;--green:#484888;--green-light:#EEEEF5;--orange:#EA435D;--orange-light:#FDEEF1;--red:#EA435D;--red-light:#FDEEF1;--gray-50:#f8fafc;--gray-100:#f1f5f9;--gray-200:#e2e8f0;--gray-400:#94a3b8;--gray-600:#475569;--gray-800:#1e293b;--shadow:0 1px 3px rgba(0,0,0,0.08);--shadow-md:0 4px 16px rgba(0,0,0,0.12);}
   *{margin:0;padding:0;box-sizing:border-box;}
   body{font-family:'DM Sans',sans-serif;background:var(--gray-50);color:var(--gray-800);min-height:100vh;}
-  .login-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#1a6bbd 0%,#0f4080 100%);}
+  .login-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#484888 0%,#2e2e5a 100%);}
   .login-box{background:white;border-radius:20px;padding:40px 36px;width:400px;box-shadow:0 20px 60px rgba(0,0,0,0.2);}
   .login-logo{text-align:center;margin-bottom:28px;}
   .login-logo h1{font-size:20px;font-weight:800;color:var(--blue);}
@@ -20,7 +20,7 @@
   .form-input{width:100%;padding:10px 14px;border:1.5px solid var(--gray-200);border-radius:10px;font-family:'DM Sans',sans-serif;font-size:14px;color:var(--gray-800);outline:none;transition:border-color 0.15s;}
   .form-input:focus{border-color:var(--blue);}
   .login-btn{width:100%;padding:12px;background:var(--blue);color:white;border:none;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:700;cursor:pointer;margin-top:6px;transition:background 0.15s;}
-  .login-btn:hover{background:#155fa0;}
+  .login-btn:hover{background:#3a3a70;}
   .login-error{background:var(--red-light);color:var(--red);font-size:12px;font-weight:600;padding:8px 12px;border-radius:8px;margin-bottom:12px;display:none;}
   .app{display:none;min-height:100vh;}
   .sidebar{width:240px;background:white;border-right:1px solid var(--gray-200);display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:100;}
@@ -75,13 +75,13 @@
   .badge.gray{background:var(--gray-100);color:var(--gray-400);}
   .btn{display:inline-flex;align-items:center;gap:6px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;padding:8px 16px;border-radius:8px;border:none;cursor:pointer;transition:all 0.15s;}
   .btn-primary{background:var(--blue);color:white;}
-  .btn-primary:hover{background:#155fa0;}
+  .btn-primary:hover{background:#3a3a70;}
   .btn-outline{background:white;color:var(--gray-600);border:1px solid var(--gray-200);}
   .btn-outline:hover{background:var(--gray-50);}
   .btn-green{background:var(--green);color:white;}
-  .btn-green:hover{background:#15803d;}
+  .btn-green:hover{background:#3a3a70;}
   .btn-red{background:var(--red);color:white;}
-  .btn-red:hover{background:#b91c1c;}
+  .btn-red:hover{background:#c4304d;}
   .btn-sm{padding:5px 12px;font-size:12px;}
   .progress-stepper{display:flex;align-items:center;background:white;border:1px solid var(--gray-200);border-radius:12px;padding:20px 28px;box-shadow:var(--shadow);margin-bottom:20px;}
   .step{display:flex;flex-direction:column;align-items:center;flex:1;}
@@ -164,6 +164,7 @@
       <div class="nav-item active" onclick="showPage('dashboard')" id="nav-dashboard"><span>📊</span> Dashboard <span class="nav-badge" id="pending-badge">0</span></div>
       <div class="nav-item" onclick="showPage('employees')" id="nav-employees"><span>👥</span> Employees</div>
       <div class="nav-item" onclick="showPage('questions')" id="nav-questions"><span>📝</span> Test Questions</div>
+      <div class="nav-item" onclick="showPage('plans')" id="nav-plans"><span>📋</span> Training Plans</div>
     </nav>
     <div class="sidebar-footer">
       <div class="sidebar-avatar">A</div>
@@ -228,6 +229,17 @@
       </div>
     </div>
 
+
+    <!-- TRAINING PLANS -->
+    <div class="page" id="page-plans">
+      <div class="card">
+        <div class="section-header">
+          <div class="section-title">Training Plans</div>
+          <button class="btn btn-primary btn-sm" onclick="openPlanModal()">+ Add Plan</button>
+        </div>
+        <div id="plans-list"><div class="loading">Loading...</div></div>
+      </div>
+    </div>
     <!-- DETAIL -->
     <div class="page" id="page-detail">
       <div id="detail-content"></div>
@@ -235,6 +247,37 @@
   </div>
 </div>
 
+
+<!-- ADD PLAN MODAL -->
+<div class="modal-overlay" id="plan-modal">
+  <div class="modal">
+    <div class="modal-title">Add Training Plan</div>
+    <div class="modal-sub">Create a new training plan</div>
+    <div class="form-group"><label class="form-label">Plan Name</label><input class="form-input" id="plan-name" placeholder="e.g. Safety Training 2026"></div>
+    <div class="form-group"><label class="form-label">Description</label><input class="form-input" id="plan-desc" placeholder="Brief description (optional)"></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal('plan-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="addPlan()">Create Plan</button>
+    </div>
+  </div>
+</div>
+
+<!-- PLAN MEMBERS MODAL -->
+<div class="modal-overlay" id="members-modal">
+  <div class="modal" style="width:520px">
+    <div class="modal-title" id="members-modal-title">Plan Members</div>
+    <div class="modal-sub">Add or remove employees from this plan</div>
+    <div id="members-list" style="max-height:300px;overflow-y:auto;margin-bottom:14px;"></div>
+    <div class="form-group">
+      <label class="form-label">Add Employee</label>
+      <select class="form-input" id="member-select"></select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal('members-modal')">Close</button>
+      <button class="btn btn-primary" onclick="addMember()">Add to Plan</button>
+    </div>
+  </div>
+</div>
 <!-- ADD EMPLOYEE MODAL -->
 <div class="modal-overlay" id="add-modal">
   <div class="modal">

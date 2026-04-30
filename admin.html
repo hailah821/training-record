@@ -317,23 +317,52 @@ body{font-family:'DM Sans',sans-serif;background:var(--gray-50);color:var(--gray
 
 <!-- ADD QUESTION MODAL -->
 <div class="modal-overlay" id="q-modal">
-  <div class="modal">
-    <div class="modal-title">Add Test Question</div>
-    <div class="modal-sub">Question will appear in the employee assessment test</div>
-    <div class="form-group"><label class="form-label">Training Plan (optional)</label><select class="form-input" id="q-plan"><option value="">-- All employees --</option></select></div>
-    <div class="form-group"><label class="form-label">Question Text</label><input class="form-input" id="q-text" placeholder="Enter the question"></div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-      <div class="form-group"><label class="form-label">Option A</label><input class="form-input" id="q-a" placeholder="Option A"></div>
-      <div class="form-group"><label class="form-label">Option B</label><input class="form-input" id="q-b" placeholder="Option B"></div>
-      <div class="form-group"><label class="form-label">Option C</label><input class="form-input" id="q-c" placeholder="Option C"></div>
-      <div class="form-group"><label class="form-label">Option D</label><input class="form-input" id="q-d" placeholder="Option D"></div>
+  <div class="modal" style="width:580px;max-height:90vh;overflow-y:auto;">
+    <div class="modal-title">Add Test Questions</div>
+    <div class="modal-sub">Choose question type then fill in your questions</div>
+
+    <!-- Question Type -->
+    <div class="form-group">
+      <label class="form-label">Training Plan (optional)</label>
+      <select class="form-input" id="q-plan"><option value="">-- All employees --</option></select>
     </div>
-    <div class="form-group"><label class="form-label">Correct Answer</label>
-      <select class="form-input" id="q-correct"><option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="D">D</option></select>
+    <div class="form-group">
+      <label class="form-label">Question Type</label>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px;">
+        <div id="type-mcq" onclick="setQType('mcq')" style="border:2px solid var(--blue);background:var(--blue-light);border-radius:10px;padding:14px;cursor:pointer;text-align:center;">
+          <div style="font-size:20px;margin-bottom:6px">🔤</div>
+          <div style="font-size:13px;font-weight:700;color:var(--blue)">Multiple Choice</div>
+          <div style="font-size:11px;color:var(--gray-400);margin-top:3px">A, B, C, D options</div>
+        </div>
+        <div id="type-tf" onclick="setQType('tf')" style="border:2px solid var(--gray-200);background:white;border-radius:10px;padding:14px;cursor:pointer;text-align:center;">
+          <div style="font-size:20px;margin-bottom:6px">✅</div>
+          <div style="font-size:13px;font-weight:700;color:var(--gray-600)">True / False</div>
+          <div style="font-size:11px;color:var(--gray-400);margin-top:3px">True or False answers</div>
+        </div>
+      </div>
     </div>
+
+    <!-- MCQ Section -->
+    <div id="mcq-section">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <label class="form-label" style="margin:0">Questions</label>
+        <button class="btn btn-outline btn-sm" onclick="addMCQRow()">+ Add Question</button>
+      </div>
+      <div id="mcq-rows"></div>
+    </div>
+
+    <!-- T/F Section -->
+    <div id="tf-section" style="display:none;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <label class="form-label" style="margin:0">Questions</label>
+        <button class="btn btn-outline btn-sm" onclick="addTFRow()">+ Add Question</button>
+      </div>
+      <div id="tf-rows"></div>
+    </div>
+
     <div class="modal-actions">
       <button class="btn btn-outline" onclick="closeModal('q-modal')">Cancel</button>
-      <button class="btn btn-primary" onclick="addQuestion()">Add Question</button>
+      <button class="btn btn-primary" onclick="saveAllQuestions()">Save Questions</button>
     </div>
   </div>
 </div>
@@ -573,6 +602,8 @@ async function confirmSignoff(){
 }
 
 // ── TEST QUESTIONS ────────────────────────────────────────────────
+let qType = 'mcq', mcqCount = 0, tfCount = 0;
+
 async function loadQuestions(){
   const{data:pd}=await sb.from('training_plans').select('id,name');
   const sel=document.getElementById('q-plan');
@@ -585,31 +616,124 @@ async function loadQuestions(){
     <div class="q-card">
       <div style="display:flex;justify-content:space-between;align-items:start">
         <div>
-          ${q.training_plans?`<span style="font-size:11px;font-weight:600;background:var(--blue-light);color:var(--blue);padding:2px 8px;border-radius:10px;margin-bottom:6px;display:inline-block">${q.training_plans.name}</span><br>`:''}
-          <div class="q-text">Q${i+1}. ${q.question}</div>
+          ${q.training_plans?`<span style="font-size:11px;font-weight:600;background:var(--blue-light);color:var(--blue);padding:2px 8px;border-radius:10px;margin-bottom:6px;display:inline-block">${q.training_plans.name}</span>`:''}
+          <span style="font-size:11px;font-weight:600;background:${q.question_type==='tf'?'#FDF6E3':'var(--green-light)'};color:${q.question_type==='tf'?'#b45309':'var(--green)'};padding:2px 8px;border-radius:10px;margin-bottom:6px;margin-left:4px;display:inline-block">${q.question_type==='tf'?'True/False':'MCQ'}</span><br>
+          <div class="q-text" style="margin-top:6px">Q${i+1}. ${q.question}</div>
         </div>
         <button class="btn btn-red btn-sm" onclick="deleteQuestion('${q.id}')">Delete</button>
       </div>
       <div style="display:flex;flex-direction:column;gap:4px;margin-top:8px">
-        ${['A','B','C','D'].map(opt=>`<div style="font-size:12px"><strong style="color:var(--blue)">${opt}.</strong> ${q['option_'+opt.toLowerCase()]}</div>`).join('')}
+        ${q.question_type==='tf'
+          ?`<div style="font-size:12px"><strong style="color:var(--blue)">A.</strong> True</div><div style="font-size:12px"><strong style="color:var(--blue)">B.</strong> False</div>`
+          :['A','B','C','D'].map(opt=>`<div style="font-size:12px"><strong style="color:var(--blue)">${opt}.</strong> ${q['option_'+opt.toLowerCase()]||''}</div>`).join('')}
       </div>
       <div style="font-size:12px;color:var(--green);font-weight:600;margin-top:8px">✓ Correct: ${q.correct_answer}</div>
     </div>`).join('');
 }
-function openQModal(){document.getElementById('q-modal').classList.add('show');}
-async function addQuestion(){
-  const question=document.getElementById('q-text').value.trim();
-  const option_a=document.getElementById('q-a').value.trim(), option_b=document.getElementById('q-b').value.trim();
-  const option_c=document.getElementById('q-c').value.trim(), option_d=document.getElementById('q-d').value.trim();
-  const correct_answer=document.getElementById('q-correct').value;
+
+function openQModal(){
+  qType='mcq'; mcqCount=0; tfCount=0;
+  document.getElementById('mcq-rows').innerHTML='';
+  document.getElementById('tf-rows').innerHTML='';
+  addMCQRow();
+  document.getElementById('q-modal').classList.add('show');
+}
+
+function setQType(type){
+  qType=type;
+  document.getElementById('type-mcq').style.border=type==='mcq'?'2px solid var(--blue)':'2px solid var(--gray-200)';
+  document.getElementById('type-mcq').style.background=type==='mcq'?'var(--blue-light)':'white';
+  document.getElementById('type-mcq').querySelector('div:nth-child(2)').style.color=type==='mcq'?'var(--blue)':'var(--gray-600)';
+  document.getElementById('type-tf').style.border=type==='tf'?'2px solid var(--blue)':'2px solid var(--gray-200)';
+  document.getElementById('type-tf').style.background=type==='tf'?'var(--blue-light)':'white';
+  document.getElementById('type-tf').querySelector('div:nth-child(2)').style.color=type==='tf'?'var(--blue)':'var(--gray-600)';
+  document.getElementById('mcq-section').style.display=type==='mcq'?'block':'none';
+  document.getElementById('tf-section').style.display=type==='tf'?'block':'none';
+  if(type==='tf'&&tfCount===0) addTFRow();
+}
+
+function addMCQRow(){
+  mcqCount++;
+  const i=mcqCount;
+  const div=document.createElement('div');
+  div.id=`mcq-row-${i}`;
+  div.style.cssText='background:var(--gray-50);border-radius:10px;padding:14px;margin-bottom:10px;border:1px solid var(--gray-200)';
+  div.innerHTML=`
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <span style="font-size:12px;font-weight:700;color:var(--blue)">Q${i}</span>
+      <button class="btn btn-xs btn-red" onclick="document.getElementById('mcq-row-${i}').remove()">✕</button>
+    </div>
+    <div class="form-group"><input class="form-input" id="mcq-q-${i}" placeholder="Question text"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+      <input class="form-input" id="mcq-a-${i}" placeholder="Option A" style="font-size:12px;padding:7px 10px">
+      <input class="form-input" id="mcq-b-${i}" placeholder="Option B" style="font-size:12px;padding:7px 10px">
+      <input class="form-input" id="mcq-c-${i}" placeholder="Option C" style="font-size:12px;padding:7px 10px">
+      <input class="form-input" id="mcq-d-${i}" placeholder="Option D" style="font-size:12px;padding:7px 10px">
+    </div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <span style="font-size:12px;font-weight:600;color:var(--gray-600)">Correct:</span>
+      <select class="form-input" id="mcq-ans-${i}" style="width:auto;padding:5px 10px;font-size:12px">
+        <option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="D">D</option>
+      </select>
+    </div>`;
+  document.getElementById('mcq-rows').appendChild(div);
+}
+
+function addTFRow(){
+  tfCount++;
+  const i=tfCount;
+  const div=document.createElement('div');
+  div.id=`tf-row-${i}`;
+  div.style.cssText='background:var(--gray-50);border-radius:10px;padding:14px;margin-bottom:10px;border:1px solid var(--gray-200)';
+  div.innerHTML=`
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <span style="font-size:12px;font-weight:700;color:var(--blue)">Q${i}</span>
+      <button class="btn btn-xs btn-red" onclick="document.getElementById('tf-row-${i}').remove()">✕</button>
+    </div>
+    <div class="form-group"><input class="form-input" id="tf-q-${i}" placeholder="Question text"></div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <span style="font-size:12px;font-weight:600;color:var(--gray-600)">Correct Answer:</span>
+      <select class="form-input" id="tf-ans-${i}" style="width:auto;padding:5px 10px;font-size:12px">
+        <option value="A">True</option><option value="B">False</option>
+      </select>
+    </div>`;
+  document.getElementById('tf-rows').appendChild(div);
+}
+
+async function saveAllQuestions(){
   const plan_id=document.getElementById('q-plan').value||null;
-  if(!question||!option_a||!option_b||!option_c||!option_d){alert('Please fill all fields');return;}
-  const{error}=await sb.from('training_questions').insert([{question,option_a,option_b,option_c,option_d,correct_answer,plan_id}]);
+  const questions=[];
+  if(qType==='mcq'){
+    const rows=document.querySelectorAll('[id^="mcq-row-"]');
+    for(const row of rows){
+      const id=row.id.split('-')[2];
+      const question=document.getElementById(`mcq-q-${id}`)?.value.trim();
+      const option_a=document.getElementById(`mcq-a-${id}`)?.value.trim();
+      const option_b=document.getElementById(`mcq-b-${id}`)?.value.trim();
+      const option_c=document.getElementById(`mcq-c-${id}`)?.value.trim();
+      const option_d=document.getElementById(`mcq-d-${id}`)?.value.trim();
+      const correct_answer=document.getElementById(`mcq-ans-${id}`)?.value;
+      if(!question||!option_a||!option_b||!option_c||!option_d){alert('Please fill all question fields');return;}
+      questions.push({question,option_a,option_b,option_c,option_d,correct_answer,plan_id,question_type:'mcq'});
+    }
+  } else {
+    const rows=document.querySelectorAll('[id^="tf-row-"]');
+    for(const row of rows){
+      const id=row.id.split('-')[2];
+      const question=document.getElementById(`tf-q-${id}`)?.value.trim();
+      const correct_answer=document.getElementById(`tf-ans-${id}`)?.value;
+      if(!question){alert('Please fill all question fields');return;}
+      questions.push({question,option_a:'True',option_b:'False',option_c:'',option_d:'',correct_answer,plan_id,question_type:'tf'});
+    }
+  }
+  if(!questions.length){alert('Please add at least one question');return;}
+  const{error}=await sb.from('training_questions').insert(questions);
   if(error){alert('Error: '+error.message);return;}
   closeModal('q-modal');
-  ['q-text','q-a','q-b','q-c','q-d'].forEach(i=>document.getElementById(i).value='');
   loadQuestions();
+  alert(`✓ ${questions.length} question(s) added!`);
 }
+
 async function deleteQuestion(id){
   if(!confirm('Delete this question?'))return;
   await sb.from('training_questions').delete().eq('id',id);

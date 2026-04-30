@@ -363,17 +363,22 @@ async function openTest(){
   }
   testQuestions=data.sort(()=>Math.random()-0.5).slice(0,10);
   testAnswers={};
-  document.getElementById('test-questions-container').innerHTML=testQuestions.map((q,i)=>`
-    <div class="test-card">
+  document.getElementById('test-questions-container').innerHTML=testQuestions.map((q,i)=>{
+    const isTF=q.question_type==='tf';
+    const opts=isTF
+      ?[{v:'A',l:'True'},{v:'B',l:'False'}]
+      :['A','B','C','D'].map(opt=>({v:opt,l:q['option_'+opt.toLowerCase()]}));
+    return `<div class="test-card">
       <div class="test-q">Q${i+1}. ${q.question}</div>
       <div class="test-options">
-        ${['A','B','C','D'].map(opt=>`
-          <label class="test-option" id="opt-${i}-${opt}">
-            <input type="radio" name="q${i}" value="${opt}" onchange="selectAnswer(${i},'${opt}')">
-            <strong>${opt}.</strong> ${q['option_'+opt.toLowerCase()]}
+        ${opts.map(o=>`
+          <label class="test-option" id="opt-${i}-${o.v}">
+            <input type="radio" name="q${i}" value="${o.v}" onchange="selectAnswer(${i},'${o.v}')">
+            <strong>${o.v}.</strong> ${o.l}
           </label>`).join('')}
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
   document.getElementById('test-modal').classList.add('show');
 }
 
@@ -396,8 +401,13 @@ async function submitTest(){
   let correct=0;
   testQuestions.forEach((q,i)=>{if(testAnswers[i]===q.correct_answer)correct++;});
   if(correct<8){
-    alert(`You scored ${correct}/10. You need at least 8/10 to pass. Please try again.`);
     closeTestModal();
+    const mc=document.getElementById('main-content');
+    const notice=document.createElement('div');
+    notice.style.cssText='background:var(--red-light);color:var(--red);font-weight:600;font-size:13px;padding:14px 18px;border-radius:10px;margin-bottom:16px;display:flex;align-items:center;gap:8px';
+    notice.innerHTML=`❌ You scored ${correct}/10. You need at least 8/10 to pass. Please try again.`;
+    mc.insertBefore(notice,mc.firstChild);
+    setTimeout(()=>notice.remove(),5000);
     return;
   }
   const{error}=await sb.from('training_employees').update({test_score:correct,stage:1}).eq('id',currentEmp.id);

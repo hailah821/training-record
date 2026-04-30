@@ -186,6 +186,11 @@ body{font-family:'DM Sans',sans-serif;background:var(--gray-50);color:var(--gray
 .score-1b{background:#FDF6E3;color:#b45309;}
 .score-2b{background:var(--blue-light);color:var(--blue);}
 .score-3b{background:var(--green-light);color:var(--green);}
+
+/* TOAST */
+.toast{position:fixed;bottom:24px;right:24px;background:var(--gray-800);color:white;font-size:13px;font-weight:600;padding:12px 18px;border-radius:10px;box-shadow:var(--shadow-md);z-index:999;animation:slideUp 0.2s ease;display:flex;align-items:center;gap:8px;}
+.toast.green{background:var(--green);}
+.toast.red{background:var(--red);}
 </style>
 </head>
 <body>
@@ -554,7 +559,7 @@ async function addEmployee(){
   closeModal('add-modal');
   ['new-name','new-empid','new-dept','new-title','new-username','new-password'].forEach(i=>document.getElementById(i).value='');
   await loadEmployees();
-  alert(`✓ ${name} added! Login: ${username} / ${password}`);
+  toast(`✓ ${name} added!`);
 }
 async function deleteEmployee(id,name){
   if(!confirm(`Delete ${name}?`))return;
@@ -620,7 +625,7 @@ async function confirmSignoff(){
   if(error){alert('Error: '+error.message);return;}
   closeModal('signoff-modal');
   await loadEmployees();
-  alert('✓ Sign-off confirmed!');
+  toast('✓ Sign-off confirmed!');
   viewDetail(signoffTarget);
 }
 
@@ -754,7 +759,7 @@ async function saveAllQuestions(){
   if(error){alert('Error: '+error.message);return;}
   closeModal('q-modal');
   loadQuestions();
-  alert(`✓ ${questions.length} question(s) added!`);
+  toast(`✓ ${questions.length} question(s) saved!`);
 }
 
 async function deleteQuestion(id){
@@ -971,7 +976,7 @@ async function saveEditPlan(){
   if(error){alert('Error: '+error.message);return;}
   closeModal('edit-plan-modal');
   await loadPlans();
-  alert('✓ Plan updated!');
+  toast('✓ Plan updated!');
 }
 
 // ── NAV ───────────────────────────────────────────────────────────
@@ -990,6 +995,15 @@ function closeModal(id){document.getElementById(id).classList.remove('show');}
 function openAddModal(){document.getElementById('add-modal').classList.add('show');}
 function filterTable(v){searchVal=v;renderEmployees();}
 function filterStatus(f,el){currentFilter=f;document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));el.classList.add('active');renderEmployees();}
+
+
+function toast(msg, type='green'){
+  const t=document.createElement('div');
+  t.className=`toast ${type}`;
+  t.innerHTML=msg;
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(), 3000);
+}
 
 // INIT
 if(sessionStorage.getItem('admin_auth')==='1'){

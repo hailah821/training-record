@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Training Plans — Ygii</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --purple:#484888;--purple-light:#EEEEF5;--purple-mid:#C8C8E0;
+    --red:#EA435D;--red-light:#FDEEF1;
+    --yellow:#ECC371;--yellow-light:#FDF6E3;
+    --green:#16a34a;--green-light:#dcfce7;
+    --gray-50:#f8fafc;--gray-100:#f1f5f9;--gray-200:#e2e8f0;
+    --gray-400:#94a3b8;--gray-600:#475569;--gray-800:#1e293b;
+    --white:#ffffff;--shadow:0 1px 3px rgba(0,0,0,0.08);
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:'DM Sans',sans-serif;background:var(--gray-50);color:var(--gray-800);}
+
+  /* TOPBAR */
+  .topbar{background:white;border-bottom:1px solid var(--gray-200);padding:0 28px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;}
+  .topbar-left{display:flex;align-items:center;gap:12px;}
+  .back-btn{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--gray-600);cursor:pointer;padding:6px 12px;border-radius:8px;border:1px solid var(--gray-200);background:white;text-decoration:none;}
+  .back-btn:hover{background:var(--gray-50);}
+  .page-title{font-size:15px;font-weight:700;color:var(--purple);}
+  .btn{display:inline-flex;align-items:center;gap:6px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;padding:8px 16px;border-radius:8px;border:none;cursor:pointer;transition:all 0.15s;}
+  .btn-primary{background:var(--purple);color:white;}
+  .btn-primary:hover{background:#3a3a70;}
+  .btn-outline{background:white;color:var(--gray-600);border:1px solid var(--gray-200);}
+  .btn-outline:hover{background:var(--gray-50);}
+  .btn-red{background:var(--red);color:white;}
+  .btn-sm{padding:5px 12px;font-size:12px;}
+  .btn-xs{padding:3px 8px;font-size:11px;}
+
+  /* CONTENT */
+  .content{max-width:1100px;margin:0 auto;padding:28px;}
+
+  /* PLANS LIST */
+  .plans-grid{display:grid;gap:20px;}
+  .plan-card{background:white;border:1px solid var(--gray-200);border-radius:14px;overflow:hidden;box-shadow:var(--shadow);}
+
+  /* PLAN HEADER */
+  .plan-header{background:var(--purple);color:white;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;}
+  .plan-title{font-size:16px;font-weight:700;}
+  .plan-desc{font-size:12px;opacity:0.8;margin-top:3px;}
+  .plan-header-actions{display:flex;gap:8px;}
+
+  /* MEMBERS BAR */
+  .members-bar{padding:10px 20px;background:var(--purple-light);border-bottom:1px solid var(--gray-200);display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+  .member-chip{background:var(--purple);color:white;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;display:inline-flex;align-items:center;gap:5px;}
+  .member-chip .remove{cursor:pointer;opacity:0.7;font-size:10px;}
+  .member-chip .remove:hover{opacity:1;}
+  .add-member-btn{font-size:11px;font-weight:600;color:var(--purple);cursor:pointer;padding:3px 10px;border-radius:20px;border:1.5px dashed var(--purple-mid);background:white;}
+  .add-member-btn:hover{background:var(--purple-light);}
+
+  /* PHASES */
+  .phases-container{padding:16px 20px;}
+  .phase-block{margin-bottom:20px;}
+  .phase-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding-bottom:8px;border-bottom:2px solid var(--purple-light);}
+  .phase-title-row{display:flex;align-items:center;gap:10px;}
+  .phase-badge{background:var(--purple);color:white;font-size:11px;font-weight:700;padding:3px 12px;border-radius:20px;}
+  .phase-period{font-size:12px;color:var(--gray-400);}
+
+  /* WEEKS TABLE */
+  .weeks-table{width:100%;border-collapse:collapse;font-size:13px;}
+  .weeks-table th{text-align:left;padding:8px 12px;font-size:11px;font-weight:600;color:var(--gray-400);text-transform:uppercase;letter-spacing:0.5px;background:var(--gray-50);border-bottom:1px solid var(--gray-200);}
+  .weeks-table td{padding:10px 12px;border-bottom:1px solid var(--gray-100);vertical-align:top;}
+  .weeks-table tr:last-child td{border-bottom:none;}
+  .weeks-table tr:hover td{background:var(--gray-50);}
+  .week-num{font-weight:700;color:var(--purple);min-width:60px;}
+  .week-title{font-weight:600;}
+  .week-kpis{font-size:12px;color:var(--gray-400);margin-top:3px;}
+  .score-badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;}
+  .score-0{background:#f1f5f9;color:var(--gray-400);}
+  .score-1{background:#FDF6E3;color:#b45309;}
+  .score-2{background:var(--purple-light);color:var(--purple);}
+  .score-3{background:var(--green-light);color:var(--green);}
+
+  /* SCORING GUIDE */
+  .scoring-guide{background:var(--gray-50);border:1px solid var(--gray-200);border-radius:10px;padding:14px 16px;margin-bottom:20px;}
+  .scoring-guide-title{font-size:12px;font-weight:700;color:var(--gray-600);margin-bottom:8px;}
+  .scoring-guide-items{display:flex;gap:12px;flex-wrap:wrap;}
+  .score-item{display:flex;align-items:center;gap:6px;font-size:12px;}
+
+  /* EMPTY */
+  .empty{text-align:center;padding:48px 20px;color:var(--gray-400);}
+  .empty-icon{font-size:40px;margin-bottom:10px;}
+  .loading{text-align:center;padding:40px;color:var(--gray-400);}
+
+  /* MODAL */
+  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(15,23,42,0.4);z-index:200;align-items:center;justify-content:center;}
+  .modal-overlay.show{display:flex;}
+  .modal{background:white;border-radius:16px;padding:28px;width:520px;max-width:90vw;box-shadow:0 4px 24px rgba(0,0,0,0.15);animation:slideUp 0.2s ease;}
+  @keyframes slideUp{from{transform:translateY(12px);opacity:0;}to{transform:translateY(0);opacity:1;}}
+  .modal-title{font-size:16px;font-weight:700;margin-bottom:4px;}
+  .modal-sub{font-size:13px;color:var(--gray-400);margin-bottom:20px;}
+  .modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:20px;}
+  .form-group{margin-bottom:14px;}
+  .form-label{font-size:12px;font-weight:600;color:var(--gray-600);margin-bottom:5px;display:block;}
+  .form-input{width:100%;padding:9px 12px;border:1.5px solid var(--gray-200);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--gray-800);outline:none;transition:border-color 0.15s;}
+  .form-input:focus{border-color:var(--purple);}
+  select.form-input{cursor:pointer;}
+
+  /* WEEK EDIT ROW */
+  .week-edit-row{display:grid;grid-template-columns:60px 1fr 1fr;gap:8px;margin-bottom:8px;align-items:start;}
+  .remove-week{background:none;border:none;color:var(--gray-400);cursor:pointer;font-size:16px;padding:6px;}
+  .remove-week:hover{color:var(--red);}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <a class="back-btn" href="admin.html">← Back to Admin</a>
+    <div class="page-title">📋 Training Plans</div>
+  </div>
+  <button class="btn btn-primary" onclick="openNewPlanModal()">+ New Plan</button>
+</div>
+
+<div class="content">
+  <div class="scoring-guide">
+    <div class="scoring-guide-title">Weekly Deliverable Scoring Guide</div>
+    <div class="scoring-guide-items">
+      <div class="score-item"><span class="score-badge score-3">3</span> Exceeded — above-standard quality, no corrections</div>
+      <div class="score-item"><span class="score-badge score-2">2</span> Met — exactly as required, minor corrections only</div>
+      <div class="score-item"><span class="score-badge score-1">1</span> Partial — incomplete or required significant rework</div>
+      <div class="score-item"><span class="score-badge score-0">0</span> Missed — not submitted by review deadline</div>
+    </div>
+  </div>
+
+  <div id="plans-container"><div class="loading">Loading training plans...</div></div>
+</div>
+
+<!-- NEW PLAN MODAL -->
+<div class="modal-overlay" id="new-plan-modal">
+  <div class="modal">
+    <div class="modal-title">New Training Plan</div>
+    <div class="modal-sub">Set up the plan name, phases, and weekly deliverables</div>
+    <div class="form-group">
+      <label class="form-label">Plan Name</label>
+      <input class="form-input" id="np-name" placeholder="e.g. Ygii Tech Training — 3 Month">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Description</label>
+      <input class="form-input" id="np-desc" placeholder="e.g. Measurable weekly deliverables · Grounded in Ygii Sales Strategy">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Number of Phases</label>
+      <select class="form-input" id="np-phases" onchange="updatePhaseInputs()">
+        <option value="1">1 Phase</option>
+        <option value="2">2 Phases</option>
+        <option value="3" selected>3 Phases</option>
+        <option value="4">4 Phases</option>
+      </select>
+    </div>
+    <div id="phase-inputs"></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal('new-plan-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="createPlan()">Create Plan</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD WEEK MODAL -->
+<div class="modal-overlay" id="week-modal">
+  <div class="modal">
+    <div class="modal-title" id="week-modal-title">Add Week</div>
+    <div class="modal-sub">Add a weekly deliverable to this phase</div>
+    <div class="form-group">
+      <label class="form-label">Week Title</label>
+      <input class="form-input" id="wk-title" placeholder="e.g. Product & Company Immersion + Time Tracking">
+    </div>
+    <div class="form-group">
+      <label class="form-label">KPIs / Deliverables</label>
+      <input class="form-input" id="wk-kpis" placeholder="e.g. PRD, Testing, Training and the app is Up and Running">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal('week-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveWeek()">Add Week</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD MEMBER MODAL -->
+<div class="modal-overlay" id="member-modal">
+  <div class="modal">
+    <div class="modal-title">Add Member to Plan</div>
+    <div class="modal-sub" id="member-modal-sub">Select an employee to add</div>
+    <div class="form-group">
+      <label class="form-label">Employee</label>
+      <select class="form-input" id="member-select"></select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal('member-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="addMemberToPlan()">Add to Plan</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL='https://vuuamwlrnyobhlxtblzk.supabase.co';
+const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ1dWFtd2xybnlvYmhseHRibHprIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwNTUwODgsImV4cCI6MjA5MTYzMTA4OH0.dRmGWQZPH5pKDf6-_KqJJLzxTXMWg3uvw5CIcDwNisc';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let allPlans = [], allEmployees = [], editTarget = null;
+
+// ── LOAD ──────────────────────────────────────────────────────────
+async function loadAll() {
+  const [plansRes, empsRes] = await Promise.all([
+    sb.from('training_plans').select('*').order('created_at'),
+    sb.from('training_employees').select('id,name,emp_id').order('name')
+  ]);
+  allPlans = plansRes.data || [];
+  allEmployees = empsRes.data || [];
+
+  // Load members for each plan
+  for (const p of allPlans) {
+    const { data } = await sb.from('training_plan_members')
+      .select('employee_id, training_employees(name,emp_id)')
+      .eq('plan_id', p.id);
+    p.members = data || [];
+  }
+  renderPlans();
+}
+
+// ── RENDER ────────────────────────────────────────────────────────
+function renderPlans() {
+  const container = document.getElementById('plans-container');
+  if (!allPlans.length) {
+    container.innerHTML = `<div class="empty"><div class="empty-icon">📋</div><div style="font-size:15px;font-weight:600;margin-bottom:8px">No training plans yet</div><div style="font-size:13px;margin-bottom:16px">Create your first training plan</div><button class="btn btn-primary" onclick="openNewPlanModal()">+ New Plan</button></div>`;
+    return;
+  }
+  container.innerHTML = allPlans.map(p => renderPlanCard(p)).join('');
+}
+
+function renderPlanCard(p) {
+  const phases = p.phases || [];
+  const membersHTML = p.members && p.members.length
+    ? p.members.map(m => `<span class="member-chip">${m.training_employees.name}<span class="remove" onclick="removeMember('${p.id}','${m.employee_id}')">✕</span></span>`).join('')
+    : '<span style="font-size:12px;color:var(--gray-400)">No members yet</span>';
+
+  const phasesHTML = phases.length
+    ? phases.map((ph, pi) => renderPhase(p.id, ph, pi)).join('')
+    : `<div style="text-align:center;padding:20px;color:var(--gray-400);font-size:13px">No phases added yet</div>`;
+
+  return `
+  <div class="plan-card" id="plan-${p.id}">
+    <div class="plan-header">
+      <div>
+        <div class="plan-title">${p.name}</div>
+        ${p.description ? `<div class="plan-desc">${p.description}</div>` : ''}
+      </div>
+      <div class="plan-header-actions">
+        <button class="btn btn-sm" style="background:rgba(255,255,255,0.2);color:white;border:1px solid rgba(255,255,255,0.3)" onclick="addPhase('${p.id}')">+ Phase</button>
+        <button class="btn btn-sm" style="background:rgba(234,67,93,0.8);color:white;" onclick="deletePlan('${p.id}','${p.name}')">Delete</button>
+      </div>
+    </div>
+    <div class="members-bar">
+      <span style="font-size:11px;font-weight:700;color:var(--purple);margin-right:4px">👥 Members:</span>
+      ${membersHTML}
+      <button class="add-member-btn" onclick="openMemberModal('${p.id}','${p.name}')">+ Add</button>
+    </div>
+    <div class="phases-container">
+      ${phasesHTML}
+    </div>
+  </div>`;
+}
+
+function renderPhase(planId, ph, pi) {
+  const weeks = ph.weeks || [];
+  const weeksHTML = weeks.length
+    ? `<table class="weeks-table">
+        <thead><tr>
+          <th style="width:70px">Week</th>
+          <th>Deliverable / Title</th>
+          <th>KPIs</th>
+          <th style="width:80px">Score</th>
+          <th style="width:40px"></th>
+        </tr></thead>
+        <tbody>
+          ${weeks.map((w, wi) => `<tr>
+            <td class="week-num">Week ${w.num||wi+1}</td>
+            <td><div class="week-title">${w.title||'—'}</div></td>
+            <td><div class="week-kpis">${w.kpis||'—'}</div></td>
+            <td>
+              <select onchange="updateScore('${planId}',${pi},${wi},this.value)" style="border:1px solid var(--gray-200);border-radius:6px;padding:3px 6px;font-size:12px;font-family:'DM Sans',sans-serif;">
+                <option value="" ${!w.score&&w.score!==0?'selected':''}>—</option>
+                <option value="0" ${w.score===0?'selected':''}>0 — Missed</option>
+                <option value="1" ${w.score===1?'selected':''}>1 — Partial</option>
+                <option value="2" ${w.score===2?'selected':''}>2 — Met</option>
+                <option value="3" ${w.score===3?'selected':''}>3 — Exceeded</option>
+              </select>
+            </td>
+            <td><button class="btn btn-xs btn-red" onclick="removeWeek('${planId}',${pi},${wi})">✕</button></td>
+          </tr>`).join('')}
+        </tbody>
+       </table>`
+    : `<div style="text-align:center;padding:12px;color:var(--gray-400);font-size:12px">No weeks added yet</div>`;
+
+  const total = weeks.reduce((s,w)=>s+(w.score||0),0);
+  const max = weeks.length * 3;
+
+  return `
+  <div class="phase-block">
+    <div class="phase-header">
+      <div class="phase-title-row">
+        <span class="phase-badge">Phase ${pi+1}</span>
+        <span style="font-size:14px;font-weight:600">${ph.name||'Phase '+(pi+1)}</span>
+        <span class="phase-period">${ph.period||''}</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        ${max>0?`<span style="font-size:12px;font-weight:600;color:var(--purple)">${total}/${max}</span>`:''}
+        <button class="btn btn-sm btn-outline" onclick="openWeekModal('${planId}',${pi})">+ Week</button>
+        <button class="btn btn-xs" style="background:var(--red-light);color:var(--red);border:none;padding:3px 8px;border-radius:6px;cursor:pointer;" onclick="removePhase('${planId}',${pi})">✕</button>
+      </div>
+    </div>
+    ${weeksHTML}
+  </div>`;
+}
+
+// ── CREATE PLAN ───────────────────────────────────────────────────
+function updatePhaseInputs() {
+  const n = parseInt(document.getElementById('np-phases').value);
+  const container = document.getElementById('phase-inputs');
+  container.innerHTML = Array.from({length:n},(_,i)=>`
+    <div style="background:var(--gray-50);border-radius:8px;padding:12px;margin-bottom:10px;">
+      <div style="font-size:12px;font-weight:700;color:var(--purple);margin-bottom:8px">Phase ${i+1}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <div class="form-group" style="margin-bottom:0">
+          <label class="form-label">Phase Name</label>
+          <input class="form-input" id="ph-name-${i}" placeholder="e.g. Foundation">
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label class="form-label">Period</label>
+          <input class="form-input" id="ph-period-${i}" placeholder="e.g. Month 1 (W1–W4)">
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+async function createPlan() {
+  const name = document.getElementById('np-name').value.trim();
+  const description = document.getElementById('np-desc').value.trim();
+  if (!name) { alert('Please enter a plan name'); return; }
+  const n = parseInt(document.getElementById('np-phases').value);
+  const phases = Array.from({length:n},(_,i)=>({
+    name: document.getElementById(`ph-name-${i}`)?.value.trim() || `Phase ${i+1}`,
+    period: document.getElementById(`ph-period-${i}`)?.value.trim() || '',
+    weeks: []
+  }));
+  const { error } = await sb.from('training_plans').insert([{ name, description, phases }]);
+  if (error) { alert('Error: '+error.message); return; }
+  closeModal('new-plan-modal');
+  document.getElementById('np-name').value='';
+  document.getElementById('np-desc').value='';
+  await loadAll();
+}
+
+// ── PHASES ────────────────────────────────────────────────────────
+async function addPhase(planId) {
+  const plan = allPlans.find(p=>p.id===planId);
+  if (!plan) return;
+  const phases = plan.phases || [];
+  const n = phases.length + 1;
+  const name = prompt(`Phase ${n} name:`, `Phase ${n}`) || `Phase ${n}`;
+  const period = prompt('Period (e.g. Month 2 (W5–W8)):') || '';
+  phases.push({ name, period, weeks: [] });
+  await sb.from('training_plans').update({ phases }).eq('id', planId);
+  await loadAll();
+}
+
+async function removePhase(planId, pi) {
+  if (!confirm('Remove this phase?')) return;
+  const plan = allPlans.find(p=>p.id===planId);
+  const phases = [...(plan.phases||[])];
+  phases.splice(pi, 1);
+  await sb.from('training_plans').update({ phases }).eq('id', planId);
+  await loadAll();
+}
+
+// ── WEEKS ─────────────────────────────────────────────────────────
+let weekTarget = null;
+function openWeekModal(planId, phaseIdx) {
+  weekTarget = { planId, phaseIdx };
+  document.getElementById('week-modal-title').textContent = `Add Week to Phase ${phaseIdx+1}`;
+  document.getElementById('wk-title').value = '';
+  document.getElementById('wk-kpis').value = '';
+  document.getElementById('week-modal').classList.add('show');
+}
+
+async function saveWeek() {
+  if (!weekTarget) return;
+  const title = document.getElementById('wk-title').value.trim();
+  const kpis = document.getElementById('wk-kpis').value.trim();
+  if (!title) { alert('Please enter a week title'); return; }
+  const plan = allPlans.find(p=>p.id===weekTarget.planId);
+  const phases = JSON.parse(JSON.stringify(plan.phases||[]));
+  const ph = phases[weekTarget.phaseIdx];
+  if (!ph.weeks) ph.weeks = [];
+  ph.weeks.push({ num: ph.weeks.length+1, title, kpis, score: null });
+  await sb.from('training_plans').update({ phases }).eq('id', weekTarget.planId);
+  closeModal('week-modal');
+  await loadAll();
+}
+
+async function removeWeek(planId, pi, wi) {
+  const plan = allPlans.find(p=>p.id===planId);
+  const phases = JSON.parse(JSON.stringify(plan.phases||[]));
+  phases[pi].weeks.splice(wi,1);
+  phases[pi].weeks.forEach((w,i)=>w.num=i+1);
+  await sb.from('training_plans').update({ phases }).eq('id', planId);
+  await loadAll();
+}
+
+async function updateScore(planId, pi, wi, val) {
+  const plan = allPlans.find(p=>p.id===planId);
+  const phases = JSON.parse(JSON.stringify(plan.phases||[]));
+  phases[pi].weeks[wi].score = val===''?null:parseInt(val);
+  await sb.from('training_plans').update({ phases }).eq('id', planId);
+  // update local without full reload for performance
+  plan.phases = phases;
+  // re-render just the score totals
+}
+
+// ── DELETE PLAN ───────────────────────────────────────────────────
+async function deletePlan(id, name) {
+  if (!confirm(`Delete plan "${name}"?`)) return;
+  await sb.from('training_plans').delete().eq('id', id);
+  await loadAll();
+}
+
+// ── MEMBERS ───────────────────────────────────────────────────────
+let memberTarget = null;
+function openMemberModal(planId, planName) {
+  memberTarget = planId;
+  document.getElementById('member-modal-sub').textContent = `Add employee to: ${planName}`;
+  const plan = allPlans.find(p=>p.id===planId);
+  const existingIds = (plan.members||[]).map(m=>m.employee_id);
+  const available = allEmployees.filter(e=>!existingIds.includes(e.id));
+  const sel = document.getElementById('member-select');
+  if (!available.length) {
+    sel.innerHTML = '<option>All employees already added</option>';
+  } else {
+    sel.innerHTML = available.map(e=>`<option value="${e.id}">${e.name} (${e.emp_id})</option>`).join('');
+  }
+  document.getElementById('member-modal').classList.add('show');
+}
+
+async function addMemberToPlan() {
+  const empId = document.getElementById('member-select').value;
+  if (!empId || !memberTarget) return;
+  const { error } = await sb.from('training_plan_members').insert([{ plan_id: memberTarget, employee_id: empId }]);
+  if (error) { alert('Error: '+error.message); return; }
+  closeModal('member-modal');
+  await loadAll();
+}
+
+async function removeMember(planId, empId) {
+  await sb.from('training_plan_members').delete().eq('plan_id',planId).eq('employee_id',empId);
+  await loadAll();
+}
+
+// ── UTILS ─────────────────────────────────────────────────────────
+function openNewPlanModal() {
+  updatePhaseInputs();
+  document.getElementById('new-plan-modal').classList.add('show');
+}
+function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+
+// INIT
+loadAll();
+</script>
+</body>
+</html>

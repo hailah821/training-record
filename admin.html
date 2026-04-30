@@ -407,6 +407,25 @@ body{font-family:'DM Sans',sans-serif;background:var(--gray-50);color:var(--gray
   </div>
 </div>
 
+<!-- EDIT PLAN MODAL -->
+<div class="modal-overlay" id="edit-plan-modal">
+  <div class="modal">
+    <div class="modal-title">Edit Training Plan</div>
+    <div class="modal-sub">Update plan details and test settings</div>
+    <input type="hidden" id="edit-plan-id">
+    <div class="form-group"><label class="form-label">Plan Name</label><input class="form-input" id="edit-plan-name" placeholder="Plan name"></div>
+    <div class="form-group"><label class="form-label">Description</label><input class="form-input" id="edit-plan-desc" placeholder="Description"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div class="form-group"><label class="form-label">Number of Test Questions</label><input class="form-input" id="edit-plan-qcount" type="number" min="1" max="50"></div>
+      <div class="form-group"><label class="form-label">Pass Score (min correct)</label><input class="form-input" id="edit-plan-passscore" type="number" min="1" max="50"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal('edit-plan-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveEditPlan()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
 <!-- ADD WEEK MODAL -->
 <div class="modal-overlay" id="week-modal">
   <div class="modal">
@@ -772,6 +791,7 @@ function renderPlans(){
           <div style="font-size:11px;opacity:0.8;margin-top:4px">📝 Test: ${p.test_questions_count||10} questions · Pass: ${p.test_pass_score||8}/${p.test_questions_count||10}</div>
         </div>
         <div style="display:flex;gap:6px">
+          <button class="btn btn-sm" style="background:rgba(255,255,255,0.2);color:white;border:1px solid rgba(255,255,255,0.3)" onclick="openEditPlan('${p.id}')">Edit</button>
           <button class="btn btn-sm" style="background:rgba(255,255,255,0.2);color:white;border:1px solid rgba(255,255,255,0.3)" onclick="addPhase('${p.id}')">+ Phase</button>
           <button class="btn btn-sm" style="background:rgba(234,67,93,0.8);color:white;" onclick="deletePlan('${p.id}','${p.name}')">Delete</button>
         </div>
@@ -927,6 +947,31 @@ async function addMember(){
 async function removeMember(planId,empId){
   await sb.from('training_plan_members').delete().eq('plan_id',planId).eq('employee_id',empId);
   await loadPlans();
+}
+
+function openEditPlan(planId){
+  const p=plans.find(x=>x.id===planId);
+  if(!p)return;
+  document.getElementById('edit-plan-id').value=p.id;
+  document.getElementById('edit-plan-name').value=p.name;
+  document.getElementById('edit-plan-desc').value=p.description||'';
+  document.getElementById('edit-plan-qcount').value=p.test_questions_count||10;
+  document.getElementById('edit-plan-passscore').value=p.test_pass_score||8;
+  document.getElementById('edit-plan-modal').classList.add('show');
+}
+
+async function saveEditPlan(){
+  const id=document.getElementById('edit-plan-id').value;
+  const name=document.getElementById('edit-plan-name').value.trim();
+  const description=document.getElementById('edit-plan-desc').value.trim();
+  const test_questions_count=parseInt(document.getElementById('edit-plan-qcount').value)||10;
+  const test_pass_score=parseInt(document.getElementById('edit-plan-passscore').value)||8;
+  if(!name){alert('Please enter a plan name');return;}
+  const{error}=await sb.from('training_plans').update({name,description,test_questions_count,test_pass_score}).eq('id',id);
+  if(error){alert('Error: '+error.message);return;}
+  closeModal('edit-plan-modal');
+  await loadPlans();
+  alert('✓ Plan updated!');
 }
 
 // ── NAV ───────────────────────────────────────────────────────────

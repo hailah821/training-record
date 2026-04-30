@@ -186,6 +186,7 @@ async function doLogin(){
   const{data,error}=await sb.from('training_employees').select('*').eq('username',u).eq('password',p).single();
   if(error||!data){document.getElementById('login-error').style.display='block';return;}
   currentEmp=data;
+  sessionStorage.setItem('emp_id', currentEmp.id);
   document.getElementById('login-screen').style.display='none';
   document.getElementById('app').style.display='block';
   document.getElementById('user-avatar').textContent=currentEmp.name.charAt(0).toUpperCase();
@@ -346,7 +347,16 @@ function renderTraining(){
 
 // ── TEST ──────────────────────────────────────────────────────────
 async function openTest(){
-  const{data,error}=await sb.from('training_questions').select('*');
+  // Get employee's plan first
+  const{data:memberData}=await sb.from('training_plan_members')
+    .select('plan_id').eq('employee_id',currentEmp.id).single();
+  
+  let query=sb.from('training_questions').select('*');
+  if(memberData&&memberData.plan_id){
+    // Show questions for their plan OR questions with no plan
+    query=sb.from('training_questions').select('*').or(`plan_id.eq.${memberData.plan_id},plan_id.is.null`);
+  }
+  const{data,error}=await query;
   if(error||!data||data.length===0){
     alert('No test questions available yet. Please contact your training manager.');
     return;
@@ -489,8 +499,25 @@ async function loadMyPlan() {
     </div>`;
 }
 
-document.getElementById('login-screen').style.display='flex';
-document.getElementById('app').style.display='none';
+const savedId = sessionStorage.getItem('emp_id');
+if(savedId){
+  sb.from('training_employees').select('*').eq('id',savedId).single().then(({data})=>{
+    if(data){
+      currentEmp=data;
+      document.getElementById('login-screen').style.display='none';
+      document.getElementById('app').style.display='block';
+      document.getElementById('user-avatar').textContent=currentEmp.name.charAt(0).toUpperCase();
+      document.getElementById('user-name').textContent=currentEmp.name.split(' ')[0];
+      renderTraining();
+    } else {
+      document.getElementById('login-screen').style.display='flex';
+      document.getElementById('app').style.display='none';
+    }
+  });
+} else {
+  document.getElementById('login-screen').style.display='flex';
+  document.getElementById('app').style.display='none';
+}
 </script>
 </body>
 </html>

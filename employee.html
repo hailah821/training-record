@@ -346,14 +346,18 @@ function renderTraining(){
 }
 
 // ── TEST ──────────────────────────────────────────────────────────
+let testPassScore=8, testTotalQ=10;
 async function openTest(){
-  // Get employee's plan first
+  // Get employee's plan and test settings
   const{data:memberData}=await sb.from('training_plan_members')
-    .select('plan_id').eq('employee_id',currentEmp.id).single();
+    .select('plan_id, training_plans(test_questions_count,test_pass_score)')
+    .eq('employee_id',currentEmp.id).single();
   
+  testPassScore=memberData?.training_plans?.test_pass_score||8;
+  testTotalQ=memberData?.training_plans?.test_questions_count||10;
+
   let query=sb.from('training_questions').select('*');
   if(memberData&&memberData.plan_id){
-    // Show questions for their plan OR questions with no plan
     query=sb.from('training_questions').select('*').or(`plan_id.eq.${memberData.plan_id},plan_id.is.null`);
   }
   const{data,error}=await query;
@@ -361,7 +365,7 @@ async function openTest(){
     alert('No test questions available yet. Please contact your training manager.');
     return;
   }
-  testQuestions=data.sort(()=>Math.random()-0.5).slice(0,10);
+  testQuestions=data.sort(()=>Math.random()-0.5).slice(0,testTotalQ);
   testAnswers={};
   document.getElementById('test-questions-container').innerHTML=testQuestions.map((q,i)=>{
     const isTF=q.question_type==='tf';
@@ -400,12 +404,12 @@ async function submitTest(){
   }
   let correct=0;
   testQuestions.forEach((q,i)=>{if(testAnswers[i]===q.correct_answer)correct++;});
-  if(correct<8){
+  if(correct<testPassScore){
     closeTestModal();
     const mc=document.getElementById('main-content');
     const notice=document.createElement('div');
     notice.style.cssText='background:var(--red-light);color:var(--red);font-weight:600;font-size:13px;padding:14px 18px;border-radius:10px;margin-bottom:16px;display:flex;align-items:center;gap:8px';
-    notice.innerHTML=`❌ You scored ${correct}/10. You need at least 8/10 to pass. Please try again.`;
+    notice.innerHTML=`❌ You scored ${correct}/${testTotalQ}. You need at least ${testPassScore}/${testTotalQ} to pass. Please try again.`;
     mc.insertBefore(notice,mc.firstChild);
     setTimeout(()=>notice.remove(),5000);
     return;
@@ -414,7 +418,7 @@ async function submitTest(){
   if(error){alert('Error saving result: '+error.message);return;}
   closeTestModal();
   await refreshEmp();
-  alert(`✓ Test passed! Score: ${correct}/10`);
+  alert(`✓ Test passed! Score: ${correct}/${testTotalQ}`);
   renderTraining();
 }
 

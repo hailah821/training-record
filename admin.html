@@ -553,9 +553,9 @@ async function addEmployee(){
   const name=document.getElementById('new-name').value.trim(), emp_id=document.getElementById('new-empid').value.trim();
   const department=document.getElementById('new-dept').value.trim(), title=document.getElementById('new-title').value.trim();
   const username=document.getElementById('new-username').value.trim(), password=document.getElementById('new-password').value.trim();
-  if(!name||!emp_id||!department||!title||!username||!password){alert('Please fill all fields');return;}
+  if(!name||!emp_id||!department||!title||!username||!password){toast('⚠️ Please fill all fields','red');return;}
   const{error}=await sb.from('training_employees').insert([{name,emp_id,department,title,username,password,stage:0}]);
-  if(error){alert('Error: '+error.message);return;}
+  if(error){toast('❌ Error: '+error.message,'red');return;}
   closeModal('add-modal');
   ['new-name','new-empid','new-dept','new-title','new-username','new-password'].forEach(i=>document.getElementById(i).value='');
   await loadEmployees();
@@ -622,7 +622,7 @@ function openSignModal(id){
 function clearSig(){if(signCtx){const c=document.getElementById('sign-canvas');signCtx.clearRect(0,0,c.width,c.height);}}
 async function confirmSignoff(){
   const{error}=await sb.from('training_employees').update({mgr_signed:true,stage:4,mgr_signed_at:new Date().toISOString()}).eq('id',signoffTarget);
-  if(error){alert('Error: '+error.message);return;}
+  if(error){toast('❌ Error: '+error.message,'red');return;}
   closeModal('signoff-modal');
   await loadEmployees();
   toast('✓ Sign-off confirmed!');
@@ -741,7 +741,7 @@ async function saveAllQuestions(){
       const option_c=document.getElementById(`mcq-c-${id}`)?.value.trim();
       const option_d=document.getElementById(`mcq-d-${id}`)?.value.trim();
       const correct_answer=document.getElementById(`mcq-ans-${id}`)?.value;
-      if(!question||!option_a||!option_b||!option_c||!option_d){alert('Please fill all question fields');return;}
+      if(!question||!option_a||!option_b||!option_c||!option_d){toast('⚠️ Please fill all question fields','red');return;}
       questions.push({question,option_a,option_b,option_c,option_d,correct_answer,plan_id,question_type:'mcq'});
     }
   } else {
@@ -750,13 +750,13 @@ async function saveAllQuestions(){
       const id=row.id.split('-')[2];
       const question=document.getElementById(`tf-q-${id}`)?.value.trim();
       const correct_answer=document.getElementById(`tf-ans-${id}`)?.value;
-      if(!question){alert('Please fill all question fields');return;}
+      if(!question){toast('⚠️ Please fill all question fields','red');return;}
       questions.push({question,option_a:'True',option_b:'False',option_c:'',option_d:'',correct_answer,plan_id,question_type:'tf'});
     }
   }
-  if(!questions.length){alert('Please add at least one question');return;}
+  if(!questions.length){toast('⚠️ Please add at least one question','red');return;}
   const{error}=await sb.from('training_questions').insert(questions);
-  if(error){alert('Error: '+error.message);return;}
+  if(error){toast('❌ Error: '+error.message,'red');return;}
   closeModal('q-modal');
   loadQuestions();
   toast(`✓ ${questions.length} question(s) saved!`);
@@ -859,13 +859,13 @@ function buildPhaseInputs(){
 }
 async function createPlan(){
   const name=document.getElementById('plan-name').value.trim(), description=document.getElementById('plan-desc').value.trim();
-  if(!name){alert('Please enter a plan name');return;}
+  if(!name){toast('⚠️ Please enter a plan name','red');return;}
   const n=parseInt(document.getElementById('plan-phases').value);
   const phases=Array.from({length:n},(_,i)=>({name:document.getElementById(`ph-name-${i}`)?.value.trim()||`Phase ${i+1}`,period:document.getElementById(`ph-period-${i}`)?.value.trim()||'',weeks:[]}));
   const test_questions_count=parseInt(document.getElementById('plan-qcount').value)||10;
   const test_pass_score=parseInt(document.getElementById('plan-passscore').value)||8;
   const{error}=await sb.from('training_plans').insert([{name,description,phases,test_questions_count,test_pass_score}]);
-  if(error){alert('Error: '+error.message);return;}
+  if(error){toast('❌ Error: '+error.message,'red');return;}
   closeModal('plan-modal');
   document.getElementById('plan-name').value='';document.getElementById('plan-desc').value='';
   await loadPlans();
@@ -902,7 +902,7 @@ function openWeekModal(planId,pi){
 async function saveWeek(){
   if(!weekTarget)return;
   const title=document.getElementById('wk-title').value.trim(), kpis=document.getElementById('wk-kpis').value.trim();
-  if(!title){alert('Please enter a week title');return;}
+  if(!title){toast('⚠️ Please enter a week title','red');return;}
   const plan=plans.find(p=>p.id===weekTarget.planId);
   const phases=JSON.parse(JSON.stringify(plan.phases||[]));
   const ph=phases[weekTarget.pi];
@@ -945,7 +945,7 @@ async function addMember(){
   const empId=document.getElementById('member-select').value;
   if(!empId||!currentPlanId)return;
   const{error}=await sb.from('training_plan_members').insert([{plan_id:currentPlanId,employee_id:empId}]);
-  if(error){alert('Error: '+error.message);return;}
+  if(error){toast('❌ Error: '+error.message,'red');return;}
   closeModal('members-modal');
   await loadPlans();
 }
@@ -971,9 +971,9 @@ async function saveEditPlan(){
   const description=document.getElementById('edit-plan-desc').value.trim();
   const test_questions_count=parseInt(document.getElementById('edit-plan-qcount').value)||10;
   const test_pass_score=parseInt(document.getElementById('edit-plan-passscore').value)||8;
-  if(!name){alert('Please enter a plan name');return;}
+  if(!name){toast('⚠️ Please enter a plan name','red');return;}
   const{error}=await sb.from('training_plans').update({name,description,test_questions_count,test_pass_score}).eq('id',id);
-  if(error){alert('Error: '+error.message);return;}
+  if(error){toast('❌ Error: '+error.message,'red');return;}
   closeModal('edit-plan-modal');
   await loadPlans();
   toast('✓ Plan updated!');

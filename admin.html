@@ -746,266 +746,31 @@ function logout(){
   sessionStorage.removeItem('admin_logged_in');
   document.getElementById('app').style.display='none';
   // ── LOAD ──────────────────────────────────────────────────────────
-async function loadAll() {
-  const container = document.getElementById('plans-container');
-  if(container) container.innerHTML = '<div class="loading">Loading training plans...</div>';
-  const [plansRes, empsRes] = await Promise.all([
-    sb.from('training_plans').select('*').order('created_at'),
-    sb.from('training_employees').select('id,name,emp_id').order('name')
-  ]);
-  allPlans = plansRes.data || [];
-  if(empsRes.data) allEmployees = empsRes.data;
-  for (const p of allPlans) {
-    const { data } = await sb.from('training_plan_members')
-      .select('employee_id, training_employees(name,emp_id)')
-      .eq('plan_id', p.id);
-    p.members = data || [];
-  }
-  renderPlans();
-}
 
 // ── RENDER ────────────────────────────────────────────────────────
-function renderPlans() {
-  const container = document.getElementById('plans-container');
-  if (!allPlans.length) {
-    container.innerHTML = `<div class="empty"><div class="empty-icon">📋</div><div style="font-size:15px;font-weight:600;margin-bottom:8px">No training plans yet</div><div style="font-size:13px;margin-bottom:16px">Create your first training plan</div><button class="btn btn-primary" onclick="openNewPlanModal()">+ New Plan</button></div>`;
-    return;
-  }
-  container.innerHTML = allPlans.map(p => renderPlanCard(p)).join('');
-}
 
-function renderPlanCard(p) {
-  const phases = p.phases || [];
-  const membersHTML = p.members && p.members.length
-    ? p.members.map(m => `<span class="member-chip">${m.training_employees.name}<span class="remove" onclick="removeMember('${p.id}','${m.employee_id}')">✕</span></span>`).join('')
-    : '<span style="font-size:12px;color:var(--gray-400)">No members yet</span>';
 
-  const phasesHTML = phases.length
-    ? phases.map((ph, pi) => renderPhase(p.id, ph, pi)).join('')
-    : `<div style="text-align:center;padding:20px;color:var(--gray-400);font-size:13px">No phases added yet</div>`;
-
-  return `
-  <div class="plan-card" id="plan-${p.id}">
-    <div class="plan-header">
-      <div>
-        <div class="plan-title">${p.name}</div>
-        ${p.description ? `<div class="plan-desc">${p.description}</div>` : ''}
-      </div>
-      <div class="plan-header-actions">
-        <button class="btn btn-sm" style="background:rgba(255,255,255,0.2);color:white;border:1px solid rgba(255,255,255,0.3)" onclick="addPhase('${p.id}')">+ Phase</button>
-        <button class="btn btn-sm" style="background:rgba(234,67,93,0.8);color:white;" onclick="deletePlan('${p.id}','${p.name}')">Delete</button>
-      </div>
-    </div>
-    <div class="members-bar">
-      <span style="font-size:11px;font-weight:700;color:var(--purple);margin-right:4px">👥 Members:</span>
-      ${membersHTML}
-      <button class="add-member-btn" onclick="openMemberModal('${p.id}','${p.name}')">+ Add</button>
-    </div>
-    <div class="phases-container">
-      ${phasesHTML}
-    </div>
-  </div>`;
-}
-
-function renderPhase(planId, ph, pi) {
-  const weeks = ph.weeks || [];
-  const weeksHTML = weeks.length
-    ? `<table class="weeks-table">
-        <thead><tr>
-          <th style="width:70px">Week</th>
-          <th>Deliverable / Title</th>
-          <th>KPIs</th>
-          <th style="width:80px">Score</th>
-          <th style="width:40px"></th>
-        </tr></thead>
-        <tbody>
-          ${weeks.map((w, wi) => `<tr>
-            <td class="week-num">Week ${w.num||wi+1}</td>
-            <td><div class="week-title">${w.title||'—'}</div></td>
-            <td><div class="week-kpis">${w.kpis||'—'}</div></td>
-            <td>
-              <select onchange="updateScore('${planId}',${pi},${wi},this.value)" style="border:1px solid var(--gray-200);border-radius:6px;padding:3px 6px;font-size:12px;font-family:'DM Sans',sans-serif;">
-                <option value="" ${!w.score&&w.score!==0?'selected':''}>—</option>
-                <option value="0" ${w.score===0?'selected':''}>0 — Missed</option>
-                <option value="1" ${w.score===1?'selected':''}>1 — Partial</option>
-                <option value="2" ${w.score===2?'selected':''}>2 — Met</option>
-                <option value="3" ${w.score===3?'selected':''}>3 — Exceeded</option>
-              </select>
-            </td>
-            <td><button class="btn btn-xs btn-red" onclick="removeWeek('${planId}',${pi},${wi})">✕</button></td>
-          </tr>`).join('')}
-        </tbody>
-       </table>`
-    : `<div style="text-align:center;padding:12px;color:var(--gray-400);font-size:12px">No weeks added yet</div>`;
-
-  const total = weeks.reduce((s,w)=>s+(w.score||0),0);
-  const max = weeks.length * 3;
-
-  return `
-  <div class="phase-block">
-    <div class="phase-header">
-      <div class="phase-title-row">
-        <span class="phase-badge">Phase ${pi+1}</span>
-        <span style="font-size:14px;font-weight:600">${ph.name||'Phase '+(pi+1)}</span>
-        <span class="phase-period">${ph.period||''}</span>
-      </div>
-      <div style="display:flex;align-items:center;gap:8px;">
-        ${max>0?`<span style="font-size:12px;font-weight:600;color:var(--purple)">${total}/${max}</span>`:''}
-        <button class="btn btn-sm btn-outline" onclick="openWeekModal('${planId}',${pi})">+ Week</button>
-        <button class="btn btn-xs" style="background:var(--red-light);color:var(--red);border:none;padding:3px 8px;border-radius:6px;cursor:pointer;" onclick="removePhase('${planId}',${pi})">✕</button>
-      </div>
-    </div>
-    ${weeksHTML}
-  </div>`;
-}
 
 // ── CREATE PLAN ───────────────────────────────────────────────────
-function updatePhaseInputs() {
-  const n = parseInt(document.getElementById('np-phases').value);
-  const container = document.getElementById('phase-inputs');
-  container.innerHTML = Array.from({length:n},(_,i)=>`
-    <div style="background:var(--gray-50);border-radius:8px;padding:12px;margin-bottom:10px;">
-      <div style="font-size:12px;font-weight:700;color:var(--purple);margin-bottom:8px">Phase ${i+1}</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-        <div class="form-group" style="margin-bottom:0">
-          <label class="form-label">Phase Name</label>
-          <input class="form-input" id="ph-name-${i}" placeholder="e.g. Foundation">
-        </div>
-        <div class="form-group" style="margin-bottom:0">
-          <label class="form-label">Period</label>
-          <input class="form-input" id="ph-period-${i}" placeholder="e.g. Month 1 (W1–W4)">
-        </div>
-      </div>
-    </div>`).join('');
-}
-
-async function createPlan() {
-  const name = document.getElementById('np-name').value.trim();
-  const description = document.getElementById('np-desc').value.trim();
-  if (!name) { alert('Please enter a plan name'); return; }
-  const n = parseInt(document.getElementById('np-phases').value);
-  const phases = Array.from({length:n},(_,i)=>({
-    name: document.getElementById(`ph-name-${i}`)?.value.trim() || `Phase ${i+1}`,
-    period: document.getElementById(`ph-period-${i}`)?.value.trim() || '',
-    weeks: []
-  }));
-  const { error } = await sb.from('training_plans').insert([{ name, description, phases }]);
-  if (error) { alert('Error: '+error.message); return; }
-  closeModal('new-plan-modal');
-  document.getElementById('np-name').value='';
-  document.getElementById('np-desc').value='';
-  await loadAll();
-}
 
 // ── PHASES ────────────────────────────────────────────────────────
-async function addPhase(planId) {
-  const plan = allPlans.find(p=>p.id===planId);
-  if (!plan) return;
-  const phases = plan.phases || [];
-  const n = phases.length + 1;
-  const name = prompt(`Phase ${n} name:`, `Phase ${n}`) || `Phase ${n}`;
-  const period = prompt('Period (e.g. Month 2 (W5–W8)):') || '';
-  phases.push({ name, period, weeks: [] });
-  await sb.from('training_plans').update({ phases }).eq('id', planId);
-  await loadAll();
-}
 
-async function removePhase(planId, pi) {
-  if (!confirm('Remove this phase?')) return;
-  const plan = allPlans.find(p=>p.id===planId);
-  const phases = [...(plan.phases||[])];
-  phases.splice(pi, 1);
-  await sb.from('training_plans').update({ phases }).eq('id', planId);
-  await loadAll();
-}
 
 // ── WEEKS ─────────────────────────────────────────────────────────
-let weekTarget = null;
-function openWeekModal(planId, phaseIdx) {
-  weekTarget = { planId, phaseIdx };
-  document.getElementById('week-modal-title').textContent = `Add Week to Phase ${phaseIdx+1}`;
-  document.getElementById('wk-title').value = '';
-  document.getElementById('wk-kpis').value = '';
-  document.getElementById('week-modal').classList.add('show');
-}
 
-async function saveWeek() {
-  if (!weekTarget) return;
-  const title = document.getElementById('wk-title').value.trim();
-  const kpis = document.getElementById('wk-kpis').value.trim();
-  if (!title) { alert('Please enter a week title'); return; }
-  const plan = allPlans.find(p=>p.id===weekTarget.planId);
-  const phases = JSON.parse(JSON.stringify(plan.phases||[]));
-  const ph = phases[weekTarget.phaseIdx];
-  if (!ph.weeks) ph.weeks = [];
-  ph.weeks.push({ num: ph.weeks.length+1, title, kpis, score: null });
-  await sb.from('training_plans').update({ phases }).eq('id', weekTarget.planId);
-  closeModal('week-modal');
-  await loadAll();
-}
 
-async function removeWeek(planId, pi, wi) {
-  const plan = allPlans.find(p=>p.id===planId);
-  const phases = JSON.parse(JSON.stringify(plan.phases||[]));
-  phases[pi].weeks.splice(wi,1);
-  phases[pi].weeks.forEach((w,i)=>w.num=i+1);
-  await sb.from('training_plans').update({ phases }).eq('id', planId);
-  await loadAll();
-}
 
-async function updateScore(planId, pi, wi, val) {
-  const plan = allPlans.find(p=>p.id===planId);
-  const phases = JSON.parse(JSON.stringify(plan.phases||[]));
-  phases[pi].weeks[wi].score = val===''?null:parseInt(val);
-  await sb.from('training_plans').update({ phases }).eq('id', planId);
-  // update local without full reload for performance
-  plan.phases = phases;
-  // re-render just the score totals
-}
+
 
 // ── DELETE PLAN ───────────────────────────────────────────────────
-async function deletePlan(id, name) {
-  if (!confirm(`Delete plan "${name}"?`)) return;
-  await sb.from('training_plans').delete().eq('id', id);
-  await loadAll();
-}
 
 // ── MEMBERS ───────────────────────────────────────────────────────
-let memberTarget = null;
-function openMemberModal(planId, planName) {
-  memberTarget = planId;
-  document.getElementById('member-modal-sub').textContent = `Add employee to: ${planName}`;
-  const plan = allPlans.find(p=>p.id===planId);
-  const existingIds = (plan.members||[]).map(m=>m.employee_id);
-  const available = allEmployees.filter(e=>!existingIds.includes(e.id));
-  const sel = document.getElementById('member-select');
-  if (!available.length) {
-    sel.innerHTML = '<option>All employees already added</option>';
-  } else {
-    sel.innerHTML = available.map(e=>`<option value="${e.id}">${e.name} (${e.emp_id})</option>`).join('');
-  }
-  document.getElementById('member-modal').classList.add('show');
-}
 
-async function addMemberToPlan() {
-  const empId = document.getElementById('member-select').value;
-  if (!empId || !memberTarget) return;
-  const { error } = await sb.from('training_plan_members').insert([{ plan_id: memberTarget, employee_id: empId }]);
-  if (error) { alert('Error: '+error.message); return; }
-  closeModal('member-modal');
-  await loadAll();
-}
 
-async function removeMember(planId, empId) {
-  await sb.from('training_plan_members').delete().eq('plan_id',planId).eq('employee_id',empId);
-  await loadAll();
-}
+
 
 // ── UTILS ─────────────────────────────────────────────────────────
-function openNewPlanModal() {
-  updatePhaseInputs();
-  document.getElementById('new-plan-modal').classList.add('show');
-}
+
 function closeModal(id) { document.getElementById(id).classList.remove('show'); }
 
 document.getElementById('login-screen').style.display='flex';
@@ -1278,266 +1043,31 @@ function filterStatus(f,el){currentFilter=f;document.querySelectorAll('.tab').fo
 
 if(sessionStorage.getItem('admin_logged_in')==='true'){
   // ── LOAD ──────────────────────────────────────────────────────────
-async function loadAll() {
-  const container = document.getElementById('plans-container');
-  if(container) container.innerHTML = '<div class="loading">Loading training plans...</div>';
-  const [plansRes, empsRes] = await Promise.all([
-    sb.from('training_plans').select('*').order('created_at'),
-    sb.from('training_employees').select('id,name,emp_id').order('name')
-  ]);
-  allPlans = plansRes.data || [];
-  if(empsRes.data) allEmployees = empsRes.data;
-  for (const p of allPlans) {
-    const { data } = await sb.from('training_plan_members')
-      .select('employee_id, training_employees(name,emp_id)')
-      .eq('plan_id', p.id);
-    p.members = data || [];
-  }
-  renderPlans();
-}
 
 // ── RENDER ────────────────────────────────────────────────────────
-function renderPlans() {
-  const container = document.getElementById('plans-container');
-  if (!allPlans.length) {
-    container.innerHTML = `<div class="empty"><div class="empty-icon">📋</div><div style="font-size:15px;font-weight:600;margin-bottom:8px">No training plans yet</div><div style="font-size:13px;margin-bottom:16px">Create your first training plan</div><button class="btn btn-primary" onclick="openNewPlanModal()">+ New Plan</button></div>`;
-    return;
-  }
-  container.innerHTML = allPlans.map(p => renderPlanCard(p)).join('');
-}
 
-function renderPlanCard(p) {
-  const phases = p.phases || [];
-  const membersHTML = p.members && p.members.length
-    ? p.members.map(m => `<span class="member-chip">${m.training_employees.name}<span class="remove" onclick="removeMember('${p.id}','${m.employee_id}')">✕</span></span>`).join('')
-    : '<span style="font-size:12px;color:var(--gray-400)">No members yet</span>';
 
-  const phasesHTML = phases.length
-    ? phases.map((ph, pi) => renderPhase(p.id, ph, pi)).join('')
-    : `<div style="text-align:center;padding:20px;color:var(--gray-400);font-size:13px">No phases added yet</div>`;
-
-  return `
-  <div class="plan-card" id="plan-${p.id}">
-    <div class="plan-header">
-      <div>
-        <div class="plan-title">${p.name}</div>
-        ${p.description ? `<div class="plan-desc">${p.description}</div>` : ''}
-      </div>
-      <div class="plan-header-actions">
-        <button class="btn btn-sm" style="background:rgba(255,255,255,0.2);color:white;border:1px solid rgba(255,255,255,0.3)" onclick="addPhase('${p.id}')">+ Phase</button>
-        <button class="btn btn-sm" style="background:rgba(234,67,93,0.8);color:white;" onclick="deletePlan('${p.id}','${p.name}')">Delete</button>
-      </div>
-    </div>
-    <div class="members-bar">
-      <span style="font-size:11px;font-weight:700;color:var(--purple);margin-right:4px">👥 Members:</span>
-      ${membersHTML}
-      <button class="add-member-btn" onclick="openMemberModal('${p.id}','${p.name}')">+ Add</button>
-    </div>
-    <div class="phases-container">
-      ${phasesHTML}
-    </div>
-  </div>`;
-}
-
-function renderPhase(planId, ph, pi) {
-  const weeks = ph.weeks || [];
-  const weeksHTML = weeks.length
-    ? `<table class="weeks-table">
-        <thead><tr>
-          <th style="width:70px">Week</th>
-          <th>Deliverable / Title</th>
-          <th>KPIs</th>
-          <th style="width:80px">Score</th>
-          <th style="width:40px"></th>
-        </tr></thead>
-        <tbody>
-          ${weeks.map((w, wi) => `<tr>
-            <td class="week-num">Week ${w.num||wi+1}</td>
-            <td><div class="week-title">${w.title||'—'}</div></td>
-            <td><div class="week-kpis">${w.kpis||'—'}</div></td>
-            <td>
-              <select onchange="updateScore('${planId}',${pi},${wi},this.value)" style="border:1px solid var(--gray-200);border-radius:6px;padding:3px 6px;font-size:12px;font-family:'DM Sans',sans-serif;">
-                <option value="" ${!w.score&&w.score!==0?'selected':''}>—</option>
-                <option value="0" ${w.score===0?'selected':''}>0 — Missed</option>
-                <option value="1" ${w.score===1?'selected':''}>1 — Partial</option>
-                <option value="2" ${w.score===2?'selected':''}>2 — Met</option>
-                <option value="3" ${w.score===3?'selected':''}>3 — Exceeded</option>
-              </select>
-            </td>
-            <td><button class="btn btn-xs btn-red" onclick="removeWeek('${planId}',${pi},${wi})">✕</button></td>
-          </tr>`).join('')}
-        </tbody>
-       </table>`
-    : `<div style="text-align:center;padding:12px;color:var(--gray-400);font-size:12px">No weeks added yet</div>`;
-
-  const total = weeks.reduce((s,w)=>s+(w.score||0),0);
-  const max = weeks.length * 3;
-
-  return `
-  <div class="phase-block">
-    <div class="phase-header">
-      <div class="phase-title-row">
-        <span class="phase-badge">Phase ${pi+1}</span>
-        <span style="font-size:14px;font-weight:600">${ph.name||'Phase '+(pi+1)}</span>
-        <span class="phase-period">${ph.period||''}</span>
-      </div>
-      <div style="display:flex;align-items:center;gap:8px;">
-        ${max>0?`<span style="font-size:12px;font-weight:600;color:var(--purple)">${total}/${max}</span>`:''}
-        <button class="btn btn-sm btn-outline" onclick="openWeekModal('${planId}',${pi})">+ Week</button>
-        <button class="btn btn-xs" style="background:var(--red-light);color:var(--red);border:none;padding:3px 8px;border-radius:6px;cursor:pointer;" onclick="removePhase('${planId}',${pi})">✕</button>
-      </div>
-    </div>
-    ${weeksHTML}
-  </div>`;
-}
 
 // ── CREATE PLAN ───────────────────────────────────────────────────
-function updatePhaseInputs() {
-  const n = parseInt(document.getElementById('np-phases').value);
-  const container = document.getElementById('phase-inputs');
-  container.innerHTML = Array.from({length:n},(_,i)=>`
-    <div style="background:var(--gray-50);border-radius:8px;padding:12px;margin-bottom:10px;">
-      <div style="font-size:12px;font-weight:700;color:var(--purple);margin-bottom:8px">Phase ${i+1}</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-        <div class="form-group" style="margin-bottom:0">
-          <label class="form-label">Phase Name</label>
-          <input class="form-input" id="ph-name-${i}" placeholder="e.g. Foundation">
-        </div>
-        <div class="form-group" style="margin-bottom:0">
-          <label class="form-label">Period</label>
-          <input class="form-input" id="ph-period-${i}" placeholder="e.g. Month 1 (W1–W4)">
-        </div>
-      </div>
-    </div>`).join('');
-}
-
-async function createPlan() {
-  const name = document.getElementById('np-name').value.trim();
-  const description = document.getElementById('np-desc').value.trim();
-  if (!name) { alert('Please enter a plan name'); return; }
-  const n = parseInt(document.getElementById('np-phases').value);
-  const phases = Array.from({length:n},(_,i)=>({
-    name: document.getElementById(`ph-name-${i}`)?.value.trim() || `Phase ${i+1}`,
-    period: document.getElementById(`ph-period-${i}`)?.value.trim() || '',
-    weeks: []
-  }));
-  const { error } = await sb.from('training_plans').insert([{ name, description, phases }]);
-  if (error) { alert('Error: '+error.message); return; }
-  closeModal('new-plan-modal');
-  document.getElementById('np-name').value='';
-  document.getElementById('np-desc').value='';
-  await loadAll();
-}
 
 // ── PHASES ────────────────────────────────────────────────────────
-async function addPhase(planId) {
-  const plan = allPlans.find(p=>p.id===planId);
-  if (!plan) return;
-  const phases = plan.phases || [];
-  const n = phases.length + 1;
-  const name = prompt(`Phase ${n} name:`, `Phase ${n}`) || `Phase ${n}`;
-  const period = prompt('Period (e.g. Month 2 (W5–W8)):') || '';
-  phases.push({ name, period, weeks: [] });
-  await sb.from('training_plans').update({ phases }).eq('id', planId);
-  await loadAll();
-}
 
-async function removePhase(planId, pi) {
-  if (!confirm('Remove this phase?')) return;
-  const plan = allPlans.find(p=>p.id===planId);
-  const phases = [...(plan.phases||[])];
-  phases.splice(pi, 1);
-  await sb.from('training_plans').update({ phases }).eq('id', planId);
-  await loadAll();
-}
 
 // ── WEEKS ─────────────────────────────────────────────────────────
-let weekTarget = null;
-function openWeekModal(planId, phaseIdx) {
-  weekTarget = { planId, phaseIdx };
-  document.getElementById('week-modal-title').textContent = `Add Week to Phase ${phaseIdx+1}`;
-  document.getElementById('wk-title').value = '';
-  document.getElementById('wk-kpis').value = '';
-  document.getElementById('week-modal').classList.add('show');
-}
 
-async function saveWeek() {
-  if (!weekTarget) return;
-  const title = document.getElementById('wk-title').value.trim();
-  const kpis = document.getElementById('wk-kpis').value.trim();
-  if (!title) { alert('Please enter a week title'); return; }
-  const plan = allPlans.find(p=>p.id===weekTarget.planId);
-  const phases = JSON.parse(JSON.stringify(plan.phases||[]));
-  const ph = phases[weekTarget.phaseIdx];
-  if (!ph.weeks) ph.weeks = [];
-  ph.weeks.push({ num: ph.weeks.length+1, title, kpis, score: null });
-  await sb.from('training_plans').update({ phases }).eq('id', weekTarget.planId);
-  closeModal('week-modal');
-  await loadAll();
-}
 
-async function removeWeek(planId, pi, wi) {
-  const plan = allPlans.find(p=>p.id===planId);
-  const phases = JSON.parse(JSON.stringify(plan.phases||[]));
-  phases[pi].weeks.splice(wi,1);
-  phases[pi].weeks.forEach((w,i)=>w.num=i+1);
-  await sb.from('training_plans').update({ phases }).eq('id', planId);
-  await loadAll();
-}
 
-async function updateScore(planId, pi, wi, val) {
-  const plan = allPlans.find(p=>p.id===planId);
-  const phases = JSON.parse(JSON.stringify(plan.phases||[]));
-  phases[pi].weeks[wi].score = val===''?null:parseInt(val);
-  await sb.from('training_plans').update({ phases }).eq('id', planId);
-  // update local without full reload for performance
-  plan.phases = phases;
-  // re-render just the score totals
-}
+
 
 // ── DELETE PLAN ───────────────────────────────────────────────────
-async function deletePlan(id, name) {
-  if (!confirm(`Delete plan "${name}"?`)) return;
-  await sb.from('training_plans').delete().eq('id', id);
-  await loadAll();
-}
 
 // ── MEMBERS ───────────────────────────────────────────────────────
-let memberTarget = null;
-function openMemberModal(planId, planName) {
-  memberTarget = planId;
-  document.getElementById('member-modal-sub').textContent = `Add employee to: ${planName}`;
-  const plan = allPlans.find(p=>p.id===planId);
-  const existingIds = (plan.members||[]).map(m=>m.employee_id);
-  const available = allEmployees.filter(e=>!existingIds.includes(e.id));
-  const sel = document.getElementById('member-select');
-  if (!available.length) {
-    sel.innerHTML = '<option>All employees already added</option>';
-  } else {
-    sel.innerHTML = available.map(e=>`<option value="${e.id}">${e.name} (${e.emp_id})</option>`).join('');
-  }
-  document.getElementById('member-modal').classList.add('show');
-}
 
-async function addMemberToPlan() {
-  const empId = document.getElementById('member-select').value;
-  if (!empId || !memberTarget) return;
-  const { error } = await sb.from('training_plan_members').insert([{ plan_id: memberTarget, employee_id: empId }]);
-  if (error) { alert('Error: '+error.message); return; }
-  closeModal('member-modal');
-  await loadAll();
-}
 
-async function removeMember(planId, empId) {
-  await sb.from('training_plan_members').delete().eq('plan_id',planId).eq('employee_id',empId);
-  await loadAll();
-}
+
 
 // ── UTILS ─────────────────────────────────────────────────────────
-function openNewPlanModal() {
-  updatePhaseInputs();
-  document.getElementById('new-plan-modal').classList.add('show');
-}
+
 function closeModal(id) { document.getElementById(id).classList.remove('show'); }
 
 document.getElementById('login-screen').style.display='none';
@@ -1545,266 +1075,31 @@ document.getElementById('login-screen').style.display='none';
   loadEmployees();
 } else {
   // ── LOAD ──────────────────────────────────────────────────────────
-async function loadAll() {
-  const container = document.getElementById('plans-container');
-  if(container) container.innerHTML = '<div class="loading">Loading training plans...</div>';
-  const [plansRes, empsRes] = await Promise.all([
-    sb.from('training_plans').select('*').order('created_at'),
-    sb.from('training_employees').select('id,name,emp_id').order('name')
-  ]);
-  allPlans = plansRes.data || [];
-  if(empsRes.data) allEmployees = empsRes.data;
-  for (const p of allPlans) {
-    const { data } = await sb.from('training_plan_members')
-      .select('employee_id, training_employees(name,emp_id)')
-      .eq('plan_id', p.id);
-    p.members = data || [];
-  }
-  renderPlans();
-}
 
 // ── RENDER ────────────────────────────────────────────────────────
-function renderPlans() {
-  const container = document.getElementById('plans-container');
-  if (!allPlans.length) {
-    container.innerHTML = `<div class="empty"><div class="empty-icon">📋</div><div style="font-size:15px;font-weight:600;margin-bottom:8px">No training plans yet</div><div style="font-size:13px;margin-bottom:16px">Create your first training plan</div><button class="btn btn-primary" onclick="openNewPlanModal()">+ New Plan</button></div>`;
-    return;
-  }
-  container.innerHTML = allPlans.map(p => renderPlanCard(p)).join('');
-}
 
-function renderPlanCard(p) {
-  const phases = p.phases || [];
-  const membersHTML = p.members && p.members.length
-    ? p.members.map(m => `<span class="member-chip">${m.training_employees.name}<span class="remove" onclick="removeMember('${p.id}','${m.employee_id}')">✕</span></span>`).join('')
-    : '<span style="font-size:12px;color:var(--gray-400)">No members yet</span>';
 
-  const phasesHTML = phases.length
-    ? phases.map((ph, pi) => renderPhase(p.id, ph, pi)).join('')
-    : `<div style="text-align:center;padding:20px;color:var(--gray-400);font-size:13px">No phases added yet</div>`;
-
-  return `
-  <div class="plan-card" id="plan-${p.id}">
-    <div class="plan-header">
-      <div>
-        <div class="plan-title">${p.name}</div>
-        ${p.description ? `<div class="plan-desc">${p.description}</div>` : ''}
-      </div>
-      <div class="plan-header-actions">
-        <button class="btn btn-sm" style="background:rgba(255,255,255,0.2);color:white;border:1px solid rgba(255,255,255,0.3)" onclick="addPhase('${p.id}')">+ Phase</button>
-        <button class="btn btn-sm" style="background:rgba(234,67,93,0.8);color:white;" onclick="deletePlan('${p.id}','${p.name}')">Delete</button>
-      </div>
-    </div>
-    <div class="members-bar">
-      <span style="font-size:11px;font-weight:700;color:var(--purple);margin-right:4px">👥 Members:</span>
-      ${membersHTML}
-      <button class="add-member-btn" onclick="openMemberModal('${p.id}','${p.name}')">+ Add</button>
-    </div>
-    <div class="phases-container">
-      ${phasesHTML}
-    </div>
-  </div>`;
-}
-
-function renderPhase(planId, ph, pi) {
-  const weeks = ph.weeks || [];
-  const weeksHTML = weeks.length
-    ? `<table class="weeks-table">
-        <thead><tr>
-          <th style="width:70px">Week</th>
-          <th>Deliverable / Title</th>
-          <th>KPIs</th>
-          <th style="width:80px">Score</th>
-          <th style="width:40px"></th>
-        </tr></thead>
-        <tbody>
-          ${weeks.map((w, wi) => `<tr>
-            <td class="week-num">Week ${w.num||wi+1}</td>
-            <td><div class="week-title">${w.title||'—'}</div></td>
-            <td><div class="week-kpis">${w.kpis||'—'}</div></td>
-            <td>
-              <select onchange="updateScore('${planId}',${pi},${wi},this.value)" style="border:1px solid var(--gray-200);border-radius:6px;padding:3px 6px;font-size:12px;font-family:'DM Sans',sans-serif;">
-                <option value="" ${!w.score&&w.score!==0?'selected':''}>—</option>
-                <option value="0" ${w.score===0?'selected':''}>0 — Missed</option>
-                <option value="1" ${w.score===1?'selected':''}>1 — Partial</option>
-                <option value="2" ${w.score===2?'selected':''}>2 — Met</option>
-                <option value="3" ${w.score===3?'selected':''}>3 — Exceeded</option>
-              </select>
-            </td>
-            <td><button class="btn btn-xs btn-red" onclick="removeWeek('${planId}',${pi},${wi})">✕</button></td>
-          </tr>`).join('')}
-        </tbody>
-       </table>`
-    : `<div style="text-align:center;padding:12px;color:var(--gray-400);font-size:12px">No weeks added yet</div>`;
-
-  const total = weeks.reduce((s,w)=>s+(w.score||0),0);
-  const max = weeks.length * 3;
-
-  return `
-  <div class="phase-block">
-    <div class="phase-header">
-      <div class="phase-title-row">
-        <span class="phase-badge">Phase ${pi+1}</span>
-        <span style="font-size:14px;font-weight:600">${ph.name||'Phase '+(pi+1)}</span>
-        <span class="phase-period">${ph.period||''}</span>
-      </div>
-      <div style="display:flex;align-items:center;gap:8px;">
-        ${max>0?`<span style="font-size:12px;font-weight:600;color:var(--purple)">${total}/${max}</span>`:''}
-        <button class="btn btn-sm btn-outline" onclick="openWeekModal('${planId}',${pi})">+ Week</button>
-        <button class="btn btn-xs" style="background:var(--red-light);color:var(--red);border:none;padding:3px 8px;border-radius:6px;cursor:pointer;" onclick="removePhase('${planId}',${pi})">✕</button>
-      </div>
-    </div>
-    ${weeksHTML}
-  </div>`;
-}
 
 // ── CREATE PLAN ───────────────────────────────────────────────────
-function updatePhaseInputs() {
-  const n = parseInt(document.getElementById('np-phases').value);
-  const container = document.getElementById('phase-inputs');
-  container.innerHTML = Array.from({length:n},(_,i)=>`
-    <div style="background:var(--gray-50);border-radius:8px;padding:12px;margin-bottom:10px;">
-      <div style="font-size:12px;font-weight:700;color:var(--purple);margin-bottom:8px">Phase ${i+1}</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-        <div class="form-group" style="margin-bottom:0">
-          <label class="form-label">Phase Name</label>
-          <input class="form-input" id="ph-name-${i}" placeholder="e.g. Foundation">
-        </div>
-        <div class="form-group" style="margin-bottom:0">
-          <label class="form-label">Period</label>
-          <input class="form-input" id="ph-period-${i}" placeholder="e.g. Month 1 (W1–W4)">
-        </div>
-      </div>
-    </div>`).join('');
-}
-
-async function createPlan() {
-  const name = document.getElementById('np-name').value.trim();
-  const description = document.getElementById('np-desc').value.trim();
-  if (!name) { alert('Please enter a plan name'); return; }
-  const n = parseInt(document.getElementById('np-phases').value);
-  const phases = Array.from({length:n},(_,i)=>({
-    name: document.getElementById(`ph-name-${i}`)?.value.trim() || `Phase ${i+1}`,
-    period: document.getElementById(`ph-period-${i}`)?.value.trim() || '',
-    weeks: []
-  }));
-  const { error } = await sb.from('training_plans').insert([{ name, description, phases }]);
-  if (error) { alert('Error: '+error.message); return; }
-  closeModal('new-plan-modal');
-  document.getElementById('np-name').value='';
-  document.getElementById('np-desc').value='';
-  await loadAll();
-}
 
 // ── PHASES ────────────────────────────────────────────────────────
-async function addPhase(planId) {
-  const plan = allPlans.find(p=>p.id===planId);
-  if (!plan) return;
-  const phases = plan.phases || [];
-  const n = phases.length + 1;
-  const name = prompt(`Phase ${n} name:`, `Phase ${n}`) || `Phase ${n}`;
-  const period = prompt('Period (e.g. Month 2 (W5–W8)):') || '';
-  phases.push({ name, period, weeks: [] });
-  await sb.from('training_plans').update({ phases }).eq('id', planId);
-  await loadAll();
-}
 
-async function removePhase(planId, pi) {
-  if (!confirm('Remove this phase?')) return;
-  const plan = allPlans.find(p=>p.id===planId);
-  const phases = [...(plan.phases||[])];
-  phases.splice(pi, 1);
-  await sb.from('training_plans').update({ phases }).eq('id', planId);
-  await loadAll();
-}
 
 // ── WEEKS ─────────────────────────────────────────────────────────
-let weekTarget = null;
-function openWeekModal(planId, phaseIdx) {
-  weekTarget = { planId, phaseIdx };
-  document.getElementById('week-modal-title').textContent = `Add Week to Phase ${phaseIdx+1}`;
-  document.getElementById('wk-title').value = '';
-  document.getElementById('wk-kpis').value = '';
-  document.getElementById('week-modal').classList.add('show');
-}
 
-async function saveWeek() {
-  if (!weekTarget) return;
-  const title = document.getElementById('wk-title').value.trim();
-  const kpis = document.getElementById('wk-kpis').value.trim();
-  if (!title) { alert('Please enter a week title'); return; }
-  const plan = allPlans.find(p=>p.id===weekTarget.planId);
-  const phases = JSON.parse(JSON.stringify(plan.phases||[]));
-  const ph = phases[weekTarget.phaseIdx];
-  if (!ph.weeks) ph.weeks = [];
-  ph.weeks.push({ num: ph.weeks.length+1, title, kpis, score: null });
-  await sb.from('training_plans').update({ phases }).eq('id', weekTarget.planId);
-  closeModal('week-modal');
-  await loadAll();
-}
 
-async function removeWeek(planId, pi, wi) {
-  const plan = allPlans.find(p=>p.id===planId);
-  const phases = JSON.parse(JSON.stringify(plan.phases||[]));
-  phases[pi].weeks.splice(wi,1);
-  phases[pi].weeks.forEach((w,i)=>w.num=i+1);
-  await sb.from('training_plans').update({ phases }).eq('id', planId);
-  await loadAll();
-}
 
-async function updateScore(planId, pi, wi, val) {
-  const plan = allPlans.find(p=>p.id===planId);
-  const phases = JSON.parse(JSON.stringify(plan.phases||[]));
-  phases[pi].weeks[wi].score = val===''?null:parseInt(val);
-  await sb.from('training_plans').update({ phases }).eq('id', planId);
-  // update local without full reload for performance
-  plan.phases = phases;
-  // re-render just the score totals
-}
+
 
 // ── DELETE PLAN ───────────────────────────────────────────────────
-async function deletePlan(id, name) {
-  if (!confirm(`Delete plan "${name}"?`)) return;
-  await sb.from('training_plans').delete().eq('id', id);
-  await loadAll();
-}
 
 // ── MEMBERS ───────────────────────────────────────────────────────
-let memberTarget = null;
-function openMemberModal(planId, planName) {
-  memberTarget = planId;
-  document.getElementById('member-modal-sub').textContent = `Add employee to: ${planName}`;
-  const plan = allPlans.find(p=>p.id===planId);
-  const existingIds = (plan.members||[]).map(m=>m.employee_id);
-  const available = allEmployees.filter(e=>!existingIds.includes(e.id));
-  const sel = document.getElementById('member-select');
-  if (!available.length) {
-    sel.innerHTML = '<option>All employees already added</option>';
-  } else {
-    sel.innerHTML = available.map(e=>`<option value="${e.id}">${e.name} (${e.emp_id})</option>`).join('');
-  }
-  document.getElementById('member-modal').classList.add('show');
-}
 
-async function addMemberToPlan() {
-  const empId = document.getElementById('member-select').value;
-  if (!empId || !memberTarget) return;
-  const { error } = await sb.from('training_plan_members').insert([{ plan_id: memberTarget, employee_id: empId }]);
-  if (error) { alert('Error: '+error.message); return; }
-  closeModal('member-modal');
-  await loadAll();
-}
 
-async function removeMember(planId, empId) {
-  await sb.from('training_plan_members').delete().eq('plan_id',planId).eq('employee_id',empId);
-  await loadAll();
-}
+
 
 // ── UTILS ─────────────────────────────────────────────────────────
-function openNewPlanModal() {
-  updatePhaseInputs();
-  document.getElementById('new-plan-modal').classList.add('show');
-}
+
 function closeModal(id) { document.getElementById(id).classList.remove('show'); }
 
 document.getElementById('login-screen').style.display='flex';
@@ -1871,11 +1166,6 @@ async function addPlan() {
   loadPlans();
 }
 
-async function deletePlan(id, name) {
-  if (!confirm(`Delete plan "${name}"?`)) return;
-  await sb.from('training_plans').delete().eq('id', id);
-  loadPlans();
-}
 
 async function openMembersModal(planId, planName) {
   currentPlanId = planId;

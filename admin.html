@@ -474,15 +474,14 @@ function doLogin(){
     sessionStorage.setItem('admin_logged_in','true');
     // ── LOAD ──────────────────────────────────────────────────────────
 async function loadAll() {
+  const container = document.getElementById('plans-container');
+  if(container) container.innerHTML = '<div class="loading">Loading training plans...</div>';
   const [plansRes, empsRes] = await Promise.all([
     sb.from('training_plans').select('*').order('created_at'),
     sb.from('training_employees').select('id,name,emp_id').order('name')
   ]);
   allPlans = plansRes.data || [];
-  // Don't override allEmployees - merge instead
   if(empsRes.data) allEmployees = empsRes.data;
-
-  // Load members for each plan
   for (const p of allPlans) {
     const { data } = await sb.from('training_plan_members')
       .select('employee_id, training_employees(name,emp_id)')
@@ -748,15 +747,14 @@ function logout(){
   document.getElementById('app').style.display='none';
   // ── LOAD ──────────────────────────────────────────────────────────
 async function loadAll() {
+  const container = document.getElementById('plans-container');
+  if(container) container.innerHTML = '<div class="loading">Loading training plans...</div>';
   const [plansRes, empsRes] = await Promise.all([
     sb.from('training_plans').select('*').order('created_at'),
     sb.from('training_employees').select('id,name,emp_id').order('name')
   ]);
   allPlans = plansRes.data || [];
-  // Don't override allEmployees - merge instead
   if(empsRes.data) allEmployees = empsRes.data;
-
-  // Load members for each plan
   for (const p of allPlans) {
     const { data } = await sb.from('training_plan_members')
       .select('employee_id, training_employees(name,emp_id)')
@@ -1281,15 +1279,14 @@ function filterStatus(f,el){currentFilter=f;document.querySelectorAll('.tab').fo
 if(sessionStorage.getItem('admin_logged_in')==='true'){
   // ── LOAD ──────────────────────────────────────────────────────────
 async function loadAll() {
+  const container = document.getElementById('plans-container');
+  if(container) container.innerHTML = '<div class="loading">Loading training plans...</div>';
   const [plansRes, empsRes] = await Promise.all([
     sb.from('training_plans').select('*').order('created_at'),
     sb.from('training_employees').select('id,name,emp_id').order('name')
   ]);
   allPlans = plansRes.data || [];
-  // Don't override allEmployees - merge instead
   if(empsRes.data) allEmployees = empsRes.data;
-
-  // Load members for each plan
   for (const p of allPlans) {
     const { data } = await sb.from('training_plan_members')
       .select('employee_id, training_employees(name,emp_id)')
@@ -1549,15 +1546,14 @@ document.getElementById('login-screen').style.display='none';
 } else {
   // ── LOAD ──────────────────────────────────────────────────────────
 async function loadAll() {
+  const container = document.getElementById('plans-container');
+  if(container) container.innerHTML = '<div class="loading">Loading training plans...</div>';
   const [plansRes, empsRes] = await Promise.all([
     sb.from('training_plans').select('*').order('created_at'),
     sb.from('training_employees').select('id,name,emp_id').order('name')
   ]);
   allPlans = plansRes.data || [];
-  // Don't override allEmployees - merge instead
   if(empsRes.data) allEmployees = empsRes.data;
-
-  // Load members for each plan
   for (const p of allPlans) {
     const { data } = await sb.from('training_plan_members')
       .select('employee_id, training_employees(name,emp_id)')

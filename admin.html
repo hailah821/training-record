@@ -7,238 +7,185 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
-  :root{--blue:#484888;--blue-light:#EEEEF5;--blue-mid:#C8C8E0;--green:#484888;--green-light:#EEEEF5;--orange:#EA435D;--orange-light:#FDEEF1;--red:#EA435D;--red-light:#FDEEF1;--gray-50:#f8fafc;--gray-100:#f1f5f9;--gray-200:#e2e8f0;--gray-400:#94a3b8;--gray-600:#475569;--gray-800:#1e293b;--shadow:0 1px 3px rgba(0,0,0,0.08);--shadow-md:0 4px 16px rgba(0,0,0,0.12);}
-  *{margin:0;padding:0;box-sizing:border-box;}
-  body{font-family:'DM Sans',sans-serif;background:var(--gray-50);color:var(--gray-800);min-height:100vh;}
-  .login-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#484888 0%,#2e2e5a 100%);}
-  .login-box{background:white;border-radius:20px;padding:40px 36px;width:400px;box-shadow:0 20px 60px rgba(0,0,0,0.2);}
-  .login-logo{text-align:center;margin-bottom:28px;}
-  .login-logo h1{font-size:20px;font-weight:800;color:var(--blue);}
-  .login-logo p{font-size:13px;color:var(--gray-400);margin-top:4px;}
-  .form-group{margin-bottom:14px;}
-  .form-label{font-size:12px;font-weight:600;color:var(--gray-600);margin-bottom:5px;display:block;}
-  .form-input{width:100%;padding:10px 14px;border:1.5px solid var(--gray-200);border-radius:10px;font-family:'DM Sans',sans-serif;font-size:14px;color:var(--gray-800);outline:none;transition:border-color 0.15s;}
-  .form-input:focus{border-color:var(--blue);}
-  .login-btn{width:100%;padding:12px;background:var(--blue);color:white;border:none;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:700;cursor:pointer;margin-top:6px;transition:background 0.15s;}
-  .login-btn:hover{background:#3a3a70;}
-  .login-error{background:var(--red-light);color:var(--red);font-size:12px;font-weight:600;padding:8px 12px;border-radius:8px;margin-bottom:12px;display:none;}
-  .app{display:none;min-height:100vh;}
-  .sidebar{width:240px;background:white;border-right:1px solid var(--gray-200);display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:100;}
-  .sidebar-logo{padding:20px 20px 16px;border-bottom:1px solid var(--gray-200);}
-  .sidebar-logo h2{font-size:15px;font-weight:700;color:var(--blue);}
-  .sidebar-logo span{font-size:11px;color:var(--gray-400);}
-  .sidebar-nav{padding:12px 10px;flex:1;}
-  .nav-label{font-size:10px;font-weight:600;color:var(--gray-400);text-transform:uppercase;letter-spacing:0.8px;padding:8px 10px 4px;}
-  .nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;cursor:pointer;font-size:13.5px;font-weight:500;color:var(--gray-600);transition:all 0.15s;margin-bottom:2px;}
-  .nav-item:hover{background:var(--gray-100);color:var(--gray-800);}
-  .nav-item.active{background:var(--blue-light);color:var(--blue);}
-  .nav-badge{margin-left:auto;background:var(--blue);color:white;font-size:10px;font-weight:600;padding:1px 6px;border-radius:10px;display:none;}
-  .sidebar-footer{padding:16px;border-top:1px solid var(--gray-200);display:flex;align-items:center;gap:10px;}
-  .sidebar-avatar{width:34px;height:34px;border-radius:50%;background:var(--blue);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:white;flex-shrink:0;}
-  .sidebar-user-name{font-size:13px;font-weight:600;}
-  .sidebar-user-role{font-size:11px;color:var(--gray-400);}
-  .logout-btn{margin-left:auto;background:none;border:none;cursor:pointer;color:var(--gray-400);font-size:16px;padding:4px;}
-  .logout-btn:hover{color:var(--red);}
-  .main{margin-left:240px;flex:1;}
-  .topbar{background:white;border-bottom:1px solid var(--gray-200);padding:0 28px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;}
-  .topbar-title{font-size:15px;font-weight:600;}
-  .role-badge{font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:var(--blue-light);color:var(--blue);}
-  .page{padding:28px;display:none;}
-  .page.active{display:block;}
-  .stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px;}
-  .stat-card{background:white;border:1px solid var(--gray-200);border-radius:12px;padding:18px 20px;box-shadow:var(--shadow);}
-  .stat-label{font-size:12px;color:var(--gray-400);font-weight:500;margin-bottom:6px;}
-  .stat-val{font-size:28px;font-weight:700;color:var(--gray-800);line-height:1;}
-  .stat-sub{font-size:11px;color:var(--gray-400);margin-top:4px;}
-  .stat-card.blue .stat-val{color:var(--blue);}
-  .stat-card.green .stat-val{color:var(--green);}
-  .stat-card.orange .stat-val{color:var(--orange);}
-  .card{background:white;border:1px solid var(--gray-200);border-radius:12px;padding:20px 24px;box-shadow:var(--shadow);}
-  .section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
-  .section-title{font-size:15px;font-weight:600;}
-  .emp-table{width:100%;border-collapse:collapse;}
-  .emp-table th{text-align:left;font-size:11px;font-weight:600;color:var(--gray-400);text-transform:uppercase;letter-spacing:0.6px;padding:10px 14px;border-bottom:1px solid var(--gray-200);background:var(--gray-50);}
-  .emp-table td{padding:13px 14px;border-bottom:1px solid var(--gray-100);font-size:13.5px;vertical-align:middle;}
-  .emp-table tr:last-child td{border-bottom:none;}
-  .emp-table tr:hover td{background:var(--gray-50);}
-  .stage-track{display:flex;align-items:center;gap:3px;}
-  .stage-dot{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;border:2px solid var(--gray-200);color:var(--gray-400);background:white;}
-  .stage-dot.done{background:var(--green);border-color:var(--green);color:white;}
-  .stage-dot.current{background:var(--blue);border-color:var(--blue);color:white;}
-  .stage-dot.locked{background:var(--gray-100);border-color:var(--gray-200);color:var(--gray-300);}
-  .stage-line{width:12px;height:2px;background:var(--gray-200);}
-  .stage-line.done{background:var(--green);}
-  .badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;}
-  .badge.green{background:var(--green-light);color:var(--green);}
-  .badge.blue{background:var(--blue-light);color:var(--blue);}
-  .badge.orange{background:var(--orange-light);color:var(--orange);}
-  .badge.gray{background:var(--gray-100);color:var(--gray-400);}
-  .btn{display:inline-flex;align-items:center;gap:6px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;padding:8px 16px;border-radius:8px;border:none;cursor:pointer;transition:all 0.15s;}
-  .btn-primary{background:var(--blue);color:white;}
-  .btn-primary:hover{background:#3a3a70;}
-  .btn-outline{background:white;color:var(--gray-600);border:1px solid var(--gray-200);}
-  .btn-outline:hover{background:var(--gray-50);}
-  .btn-green{background:var(--green);color:white;}
-  .btn-green:hover{background:#3a3a70;}
-  .btn-red{background:var(--red);color:white;}
-  .btn-red:hover{background:#c4304d;}
-  .btn-sm{padding:5px 12px;font-size:12px;}
-  .progress-stepper{display:flex;align-items:center;background:white;border:1px solid var(--gray-200);border-radius:12px;padding:20px 28px;box-shadow:var(--shadow);margin-bottom:20px;}
-  .step{display:flex;flex-direction:column;align-items:center;flex:1;}
-  .step-circle{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;border:2px solid var(--gray-200);background:white;color:var(--gray-400);z-index:2;}
-  .step-circle.done{background:var(--green);border-color:var(--green);color:white;}
-  .step-circle.active{background:var(--blue);border-color:var(--blue);color:white;box-shadow:0 0 0 4px var(--blue-mid);}
-  .step-circle.locked{background:var(--gray-100);}
-  .step-label{font-size:11px;font-weight:600;color:var(--gray-400);margin-top:8px;text-align:center;white-space:nowrap;}
-  .step-label.done{color:var(--green);}
-  .step-label.active{color:var(--blue);}
-  .step-connector{flex:1;height:2px;background:var(--gray-200);margin-top:-24px;z-index:1;}
-  .step-connector.done{background:var(--green);}
-  .detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;}
-  .detail-card{background:white;border:1px solid var(--gray-200);border-radius:12px;padding:20px 22px;box-shadow:var(--shadow);}
-  .detail-card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
-  .detail-card-title{font-size:13px;font-weight:700;display:flex;align-items:center;gap:7px;}
-  .dot{width:8px;height:8px;border-radius:50%;}
-  .dot-blue{background:var(--blue);}
-  .dot-green{background:var(--green);}
-  .dot-orange{background:var(--orange);}
-  .field-row{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--gray-100);font-size:13px;}
-  .field-row:last-child{border-bottom:none;}
-  .field-key{color:var(--gray-400);font-weight:500;}
-  .field-val{font-weight:600;}
-  .score-circle{width:72px;height:72px;border-radius:50%;border:4px solid var(--green);display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--green-light);}
-  .score-num{font-size:20px;font-weight:800;color:var(--green);line-height:1;}
-  .score-lbl{font-size:9px;font-weight:600;color:var(--green);}
-  .signed-stamp{display:inline-flex;align-items:center;gap:6px;background:var(--green-light);color:var(--green);font-size:12px;font-weight:700;padding:6px 14px;border-radius:20px;}
-  .emp-page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;}
-  .emp-page-name{font-size:20px;font-weight:700;}
-  .emp-page-meta{font-size:13px;color:var(--gray-400);margin-top:2px;}
-  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(15,23,42,0.4);z-index:200;align-items:center;justify-content:center;}
-  .modal-overlay.show{display:flex;}
-  .modal{background:white;border-radius:16px;padding:28px;width:500px;max-width:90vw;box-shadow:var(--shadow-md);animation:slideUp 0.2s ease;}
-  @keyframes slideUp{from{transform:translateY(16px);opacity:0;}to{transform:translateY(0);opacity:1;}}
-  .modal-title{font-size:16px;font-weight:700;margin-bottom:4px;}
-  .modal-sub{font-size:13px;color:var(--gray-400);margin-bottom:20px;}
-  .modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:20px;}
-  .sign-box{border:2px dashed var(--gray-200);border-radius:10px;padding:16px;text-align:center;background:var(--gray-50);margin-top:12px;}
-  .sign-box p{font-size:12px;color:var(--gray-400);margin-bottom:8px;}
-  .sign-canvas{width:100%;height:70px;background:white;border:1px solid var(--gray-200);border-radius:6px;margin-bottom:8px;cursor:crosshair;display:block;}
-  .search-input{padding:8px 12px 8px 34px;border:1px solid var(--gray-200);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;outline:none;background:var(--gray-50) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.35-4.35'/%3E%3C/svg%3E") no-repeat 10px center;width:220px;}
-  .search-input:focus{border-color:var(--blue);background-color:white;}
-  .tab-row{display:flex;gap:4px;margin-bottom:20px;}
-  .tab{padding:7px 14px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;color:var(--gray-400);transition:all 0.15s;}
-  .tab.active{background:var(--blue-light);color:var(--blue);}
-  .tab:hover:not(.active){background:var(--gray-100);color:var(--gray-600);}
-  .loading{text-align:center;padding:40px;color:var(--gray-400);font-size:14px;}
-  /* Test Questions */
-  .q-card{background:var(--gray-50);border:1px solid var(--gray-200);border-radius:10px;padding:16px;margin-bottom:12px;}
-  .q-text{font-size:13px;font-weight:600;margin-bottom:10px;}
-  .q-options{display:flex;flex-direction:column;gap:6px;}
-  .q-option{display:flex;align-items:center;gap:8px;font-size:13px;}
-  .q-option input{accent-color:var(--blue);}
-  .q-correct{display:flex;align-items:center;gap:6px;margin-top:8px;font-size:12px;color:var(--green);font-weight:600;}
+:root{
+  --blue:#484888;--blue-light:#EEEEF5;--blue-mid:#C8C8E0;
+  --red:#EA435D;--red-light:#FDEEF1;
+  --yellow:#ECC371;--yellow-light:#FDF6E3;
+  --green:#16a34a;--green-light:#dcfce7;
+  --orange:#ea580c;--orange-light:#fff1e6;
+  --gray-50:#f8fafc;--gray-100:#f1f5f9;--gray-200:#e2e8f0;
+  --gray-400:#94a3b8;--gray-600:#475569;--gray-800:#1e293b;
+  --white:#fff;--shadow:0 1px 3px rgba(0,0,0,0.08);--shadow-md:0 4px 16px rgba(0,0,0,0.12);
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'DM Sans',sans-serif;background:var(--gray-50);color:var(--gray-800);min-height:100vh;}
 
-  :root{
-    --purple:#484888;--purple-light:#EEEEF5;--purple-mid:#C8C8E0;
-    --red:#EA435D;--red-light:#FDEEF1;
-    --yellow:#ECC371;--yellow-light:#FDF6E3;
-    --green:#16a34a;--green-light:#dcfce7;
-    --gray-50:#f8fafc;--gray-100:#f1f5f9;--gray-200:#e2e8f0;
-    --gray-400:#94a3b8;--gray-600:#475569;--gray-800:#1e293b;
-    --white:#ffffff;--shadow:0 1px 3px rgba(0,0,0,0.08);
-  }
-  *{margin:0;padding:0;box-sizing:border-box;}
-  body{font-family:'DM Sans',sans-serif;background:var(--gray-50);color:var(--gray-800);}
+/* LOGIN */
+.login-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#484888 0%,#2e2e5a 100%);}
+.login-box{background:white;border-radius:20px;padding:40px 36px;width:400px;box-shadow:0 20px 60px rgba(0,0,0,0.2);}
+.login-logo{text-align:center;margin-bottom:28px;}
+.login-logo h1{font-size:20px;font-weight:800;color:var(--blue);}
+.login-logo p{font-size:13px;color:var(--gray-400);margin-top:4px;}
+.form-group{margin-bottom:14px;}
+.form-label{font-size:12px;font-weight:600;color:var(--gray-600);margin-bottom:5px;display:block;}
+.form-input{width:100%;padding:10px 14px;border:1.5px solid var(--gray-200);border-radius:10px;font-family:'DM Sans',sans-serif;font-size:14px;color:var(--gray-800);outline:none;transition:border-color 0.15s;}
+.form-input:focus{border-color:var(--blue);}
+.login-btn{width:100%;padding:12px;background:var(--blue);color:white;border:none;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:700;cursor:pointer;margin-top:6px;}
+.login-btn:hover{background:#3a3a70;}
+.login-error{background:var(--red-light);color:var(--red);font-size:12px;font-weight:600;padding:8px 12px;border-radius:8px;margin-bottom:12px;display:none;}
 
-  /* TOPBAR */
-  .topbar{background:white;border-bottom:1px solid var(--gray-200);padding:0 28px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;}
-  .topbar-left{display:flex;align-items:center;gap:12px;}
-  .back-btn{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--gray-600);cursor:pointer;padding:6px 12px;border-radius:8px;border:1px solid var(--gray-200);background:white;text-decoration:none;}
-  .back-btn:hover{background:var(--gray-50);}
-  .page-title{font-size:15px;font-weight:700;color:var(--purple);}
-  .btn{display:inline-flex;align-items:center;gap:6px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;padding:8px 16px;border-radius:8px;border:none;cursor:pointer;transition:all 0.15s;}
-  .btn-primary{background:var(--purple);color:white;}
-  .btn-primary:hover{background:#3a3a70;}
-  .btn-outline{background:white;color:var(--gray-600);border:1px solid var(--gray-200);}
-  .btn-outline:hover{background:var(--gray-50);}
-  .btn-red{background:var(--red);color:white;}
-  .btn-sm{padding:5px 12px;font-size:12px;}
-  .btn-xs{padding:3px 8px;font-size:11px;}
+/* APP */
+.app{display:none;min-height:100vh;}
+.sidebar{width:240px;background:white;border-right:1px solid var(--gray-200);display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:100;}
+.sidebar-logo{padding:20px 20px 16px;border-bottom:1px solid var(--gray-200);}
+.sidebar-logo h2{font-size:15px;font-weight:700;color:var(--blue);}
+.sidebar-logo span{font-size:11px;color:var(--gray-400);}
+.sidebar-nav{padding:12px 10px;flex:1;}
+.nav-label{font-size:10px;font-weight:600;color:var(--gray-400);text-transform:uppercase;letter-spacing:0.8px;padding:8px 10px 4px;}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;cursor:pointer;font-size:13.5px;font-weight:500;color:var(--gray-600);transition:all 0.15s;margin-bottom:2px;}
+.nav-item:hover{background:var(--gray-100);color:var(--gray-800);}
+.nav-item.active{background:var(--blue-light);color:var(--blue);}
+.nav-badge{margin-left:auto;background:var(--blue);color:white;font-size:10px;font-weight:600;padding:1px 6px;border-radius:10px;display:none;}
+.sidebar-footer{padding:16px;border-top:1px solid var(--gray-200);display:flex;align-items:center;gap:10px;}
+.sidebar-avatar{width:34px;height:34px;border-radius:50%;background:var(--blue);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:white;flex-shrink:0;}
+.sidebar-user-name{font-size:13px;font-weight:600;}
+.sidebar-user-role{font-size:11px;color:var(--gray-400);}
+.logout-btn{margin-left:auto;background:none;border:none;cursor:pointer;color:var(--gray-400);font-size:16px;padding:4px;}
+.logout-btn:hover{color:var(--red);}
+.main{margin-left:240px;flex:1;}
+.topbar{background:white;border-bottom:1px solid var(--gray-200);padding:0 28px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;}
+.topbar-title{font-size:15px;font-weight:600;}
+.role-badge{font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:var(--blue-light);color:var(--blue);}
+.page{padding:28px;display:none;}
+.page.active{display:block;}
 
-  /* CONTENT */
-  .content{max-width:1100px;margin:0 auto;padding:28px;}
+/* STATS */
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px;}
+.stat-card{background:white;border:1px solid var(--gray-200);border-radius:12px;padding:18px 20px;box-shadow:var(--shadow);}
+.stat-label{font-size:12px;color:var(--gray-400);font-weight:500;margin-bottom:6px;}
+.stat-val{font-size:28px;font-weight:700;color:var(--gray-800);line-height:1;}
+.stat-sub{font-size:11px;color:var(--gray-400);margin-top:4px;}
+.stat-card.blue .stat-val{color:var(--blue);}
+.stat-card.green .stat-val{color:var(--green);}
+.stat-card.orange .stat-val{color:var(--orange);}
+.card{background:white;border:1px solid var(--gray-200);border-radius:12px;padding:20px 24px;box-shadow:var(--shadow);}
+.section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
+.section-title{font-size:15px;font-weight:600;}
 
-  /* PLANS LIST */
-  .plans-grid{display:grid;gap:20px;}
-  .plan-card{background:white;border:1px solid var(--gray-200);border-radius:14px;overflow:hidden;box-shadow:var(--shadow);}
+/* TABLE */
+.emp-table{width:100%;border-collapse:collapse;}
+.emp-table th{text-align:left;font-size:11px;font-weight:600;color:var(--gray-400);text-transform:uppercase;letter-spacing:0.6px;padding:10px 14px;border-bottom:1px solid var(--gray-200);background:var(--gray-50);}
+.emp-table td{padding:13px 14px;border-bottom:1px solid var(--gray-100);font-size:13.5px;vertical-align:middle;}
+.emp-table tr:last-child td{border-bottom:none;}
+.emp-table tr:hover td{background:var(--gray-50);}
 
-  /* PLAN HEADER */
-  .plan-header{background:var(--purple);color:white;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;}
-  .plan-title{font-size:16px;font-weight:700;}
-  .plan-desc{font-size:12px;opacity:0.8;margin-top:3px;}
-  .plan-header-actions{display:flex;gap:8px;}
+/* STAGE */
+.stage-track{display:flex;align-items:center;gap:3px;}
+.stage-dot{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;border:2px solid var(--gray-200);color:var(--gray-400);background:white;}
+.stage-dot.done{background:var(--green);border-color:var(--green);color:white;}
+.stage-dot.current{background:var(--blue);border-color:var(--blue);color:white;}
+.stage-dot.locked{background:var(--gray-100);border-color:var(--gray-200);color:var(--gray-300);}
+.stage-line{width:12px;height:2px;background:var(--gray-200);}
+.stage-line.done{background:var(--green);}
 
-  /* MEMBERS BAR */
-  .members-bar{padding:10px 20px;background:var(--purple-light);border-bottom:1px solid var(--gray-200);display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
-  .member-chip{background:var(--purple);color:white;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;display:inline-flex;align-items:center;gap:5px;}
-  .member-chip .remove{cursor:pointer;opacity:0.7;font-size:10px;}
-  .member-chip .remove:hover{opacity:1;}
-  .add-member-btn{font-size:11px;font-weight:600;color:var(--purple);cursor:pointer;padding:3px 10px;border-radius:20px;border:1.5px dashed var(--purple-mid);background:white;}
-  .add-member-btn:hover{background:var(--purple-light);}
+/* BADGE / BTN */
+.badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;}
+.badge.green{background:var(--green-light);color:var(--green);}
+.badge.blue{background:var(--blue-light);color:var(--blue);}
+.badge.orange{background:var(--orange-light);color:var(--orange);}
+.badge.gray{background:var(--gray-100);color:var(--gray-400);}
+.btn{display:inline-flex;align-items:center;gap:6px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;padding:8px 16px;border-radius:8px;border:none;cursor:pointer;transition:all 0.15s;}
+.btn-primary{background:var(--blue);color:white;}
+.btn-primary:hover{background:#3a3a70;}
+.btn-outline{background:white;color:var(--gray-600);border:1px solid var(--gray-200);}
+.btn-outline:hover{background:var(--gray-50);}
+.btn-green{background:var(--green);color:white;}
+.btn-green:hover{background:#15803d;}
+.btn-red{background:var(--red);color:white;}
+.btn-red:hover{background:#c4304d;}
+.btn-sm{padding:5px 12px;font-size:12px;}
+.btn-xs{padding:3px 8px;font-size:11px;}
 
-  /* PHASES */
-  .phases-container{padding:16px 20px;}
-  .phase-block{margin-bottom:20px;}
-  .phase-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding-bottom:8px;border-bottom:2px solid var(--purple-light);}
-  .phase-title-row{display:flex;align-items:center;gap:10px;}
-  .phase-badge{background:var(--purple);color:white;font-size:11px;font-weight:700;padding:3px 12px;border-radius:20px;}
-  .phase-period{font-size:12px;color:var(--gray-400);}
+/* DETAIL */
+.progress-stepper{display:flex;align-items:center;background:white;border:1px solid var(--gray-200);border-radius:12px;padding:20px 28px;box-shadow:var(--shadow);margin-bottom:20px;}
+.step{display:flex;flex-direction:column;align-items:center;flex:1;}
+.step-circle{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;border:2px solid var(--gray-200);background:white;color:var(--gray-400);z-index:2;}
+.step-circle.done{background:var(--green);border-color:var(--green);color:white;}
+.step-circle.active{background:var(--blue);border-color:var(--blue);color:white;box-shadow:0 0 0 4px var(--blue-mid);}
+.step-circle.locked{background:var(--gray-100);}
+.step-label{font-size:11px;font-weight:600;color:var(--gray-400);margin-top:8px;text-align:center;white-space:nowrap;}
+.step-label.done{color:var(--green);}
+.step-label.active{color:var(--blue);}
+.step-connector{flex:1;height:2px;background:var(--gray-200);margin-top:-24px;z-index:1;}
+.step-connector.done{background:var(--green);}
+.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;}
+.detail-card{background:white;border:1px solid var(--gray-200);border-radius:12px;padding:20px 22px;box-shadow:var(--shadow);}
+.detail-card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+.detail-card-title{font-size:13px;font-weight:700;display:flex;align-items:center;gap:7px;}
+.dot{width:8px;height:8px;border-radius:50%;}
+.dot-blue{background:var(--blue);}
+.dot-green{background:var(--green);}
+.dot-orange{background:var(--orange);}
+.field-row{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--gray-100);font-size:13px;}
+.field-row:last-child{border-bottom:none;}
+.field-key{color:var(--gray-400);font-weight:500;}
+.field-val{font-weight:600;}
+.score-circle{width:72px;height:72px;border-radius:50%;border:4px solid var(--green);display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--green-light);}
+.score-num{font-size:20px;font-weight:800;color:var(--green);line-height:1;}
+.score-lbl{font-size:9px;font-weight:600;color:var(--green);}
+.signed-stamp{display:inline-flex;align-items:center;gap:6px;background:var(--green-light);color:var(--green);font-size:12px;font-weight:700;padding:6px 14px;border-radius:20px;}
+.emp-page-name{font-size:20px;font-weight:700;}
+.emp-page-meta{font-size:13px;color:var(--gray-400);margin-top:2px;}
 
-  /* WEEKS TABLE */
-  .weeks-table{width:100%;border-collapse:collapse;font-size:13px;}
-  .weeks-table th{text-align:left;padding:8px 12px;font-size:11px;font-weight:600;color:var(--gray-400);text-transform:uppercase;letter-spacing:0.5px;background:var(--gray-50);border-bottom:1px solid var(--gray-200);}
-  .weeks-table td{padding:10px 12px;border-bottom:1px solid var(--gray-100);vertical-align:top;}
-  .weeks-table tr:last-child td{border-bottom:none;}
-  .weeks-table tr:hover td{background:var(--gray-50);}
-  .week-num{font-weight:700;color:var(--purple);min-width:60px;}
-  .week-title{font-weight:600;}
-  .week-kpis{font-size:12px;color:var(--gray-400);margin-top:3px;}
-  .score-badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;}
-  .score-0{background:#f1f5f9;color:var(--gray-400);}
-  .score-1{background:#FDF6E3;color:#b45309;}
-  .score-2{background:var(--purple-light);color:var(--purple);}
-  .score-3{background:var(--green-light);color:var(--green);}
+/* MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(15,23,42,0.4);z-index:200;align-items:center;justify-content:center;}
+.modal-overlay.show{display:flex;}
+.modal{background:white;border-radius:16px;padding:28px;width:500px;max-width:90vw;box-shadow:var(--shadow-md);animation:slideUp 0.2s ease;}
+@keyframes slideUp{from{transform:translateY(16px);opacity:0;}to{transform:translateY(0);opacity:1;}}
+.modal-title{font-size:16px;font-weight:700;margin-bottom:4px;}
+.modal-sub{font-size:13px;color:var(--gray-400);margin-bottom:20px;}
+.modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:20px;}
+.sign-box{border:2px dashed var(--gray-200);border-radius:10px;padding:16px;text-align:center;background:var(--gray-50);margin-top:12px;}
+.sign-box p{font-size:12px;color:var(--gray-400);margin-bottom:8px;}
+.sign-canvas{width:100%;height:70px;background:white;border:1px solid var(--gray-200);border-radius:6px;margin-bottom:8px;cursor:crosshair;display:block;}
+.search-input{padding:8px 12px 8px 34px;border:1px solid var(--gray-200);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;outline:none;background:var(--gray-50) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.35-4.35'/%3E%3C/svg%3E") no-repeat 10px center;width:220px;}
+.search-input:focus{border-color:var(--blue);background-color:white;}
+.tab-row{display:flex;gap:4px;margin-bottom:20px;}
+.tab{padding:7px 14px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;color:var(--gray-400);transition:all 0.15s;}
+.tab.active{background:var(--blue-light);color:var(--blue);}
+.tab:hover:not(.active){background:var(--gray-100);color:var(--gray-600);}
+.loading{text-align:center;padding:40px;color:var(--gray-400);}
+.q-card{background:var(--gray-50);border:1px solid var(--gray-200);border-radius:10px;padding:16px;margin-bottom:12px;}
+.q-text{font-size:13px;font-weight:600;margin-bottom:10px;}
 
-  /* SCORING GUIDE */
-  .scoring-guide{background:var(--gray-50);border:1px solid var(--gray-200);border-radius:10px;padding:14px 16px;margin-bottom:20px;}
-  .scoring-guide-title{font-size:12px;font-weight:700;color:var(--gray-600);margin-bottom:8px;}
-  .scoring-guide-items{display:flex;gap:12px;flex-wrap:wrap;}
-  .score-item{display:flex;align-items:center;gap:6px;font-size:12px;}
-
-  /* EMPTY */
-  .empty{text-align:center;padding:48px 20px;color:var(--gray-400);}
-  .empty-icon{font-size:40px;margin-bottom:10px;}
-  .loading{text-align:center;padding:40px;color:var(--gray-400);}
-
-  /* MODAL */
-  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(15,23,42,0.4);z-index:200;align-items:center;justify-content:center;}
-  .modal-overlay.show{display:flex;}
-  .modal{background:white;border-radius:16px;padding:28px;width:520px;max-width:90vw;box-shadow:0 4px 24px rgba(0,0,0,0.15);animation:slideUp 0.2s ease;}
-  @keyframes slideUp{from{transform:translateY(12px);opacity:0;}to{transform:translateY(0);opacity:1;}}
-  .modal-title{font-size:16px;font-weight:700;margin-bottom:4px;}
-  .modal-sub{font-size:13px;color:var(--gray-400);margin-bottom:20px;}
-  .modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:20px;}
-  .form-group{margin-bottom:14px;}
-  .form-label{font-size:12px;font-weight:600;color:var(--gray-600);margin-bottom:5px;display:block;}
-  .form-input{width:100%;padding:9px 12px;border:1.5px solid var(--gray-200);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--gray-800);outline:none;transition:border-color 0.15s;}
-  .form-input:focus{border-color:var(--purple);}
-  select.form-input{cursor:pointer;}
-
-  /* WEEK EDIT ROW */
-  .week-edit-row{display:grid;grid-template-columns:60px 1fr 1fr;gap:8px;margin-bottom:8px;align-items:start;}
-  .remove-week{background:none;border:none;color:var(--gray-400);cursor:pointer;font-size:16px;padding:6px;}
-  .remove-week:hover{color:var(--red);}
-
+/* TRAINING PLANS */
+.plan-card{background:white;border:1px solid var(--gray-200);border-radius:14px;overflow:hidden;box-shadow:var(--shadow);margin-bottom:16px;}
+.plan-header{background:var(--blue);color:white;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;}
+.plan-title{font-size:15px;font-weight:700;}
+.plan-desc{font-size:12px;opacity:0.8;margin-top:2px;}
+.members-bar{padding:10px 20px;background:var(--blue-light);border-bottom:1px solid var(--gray-200);display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.member-chip{background:var(--blue);color:white;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;display:inline-flex;align-items:center;gap:5px;}
+.phase-block{padding:14px 20px;border-bottom:1px solid var(--gray-100);}
+.phase-block:last-child{border-bottom:none;}
+.phase-badge{background:var(--blue);color:white;font-size:11px;font-weight:700;padding:3px 12px;border-radius:20px;}
+.weeks-table{width:100%;border-collapse:collapse;font-size:13px;margin-top:10px;}
+.weeks-table th{text-align:left;padding:8px 12px;font-size:11px;font-weight:600;color:var(--gray-400);text-transform:uppercase;background:var(--gray-50);border-bottom:1px solid var(--gray-200);}
+.weeks-table td{padding:10px 12px;border-bottom:1px solid var(--gray-100);vertical-align:top;}
+.weeks-table tr:last-child td{border-bottom:none;}
+.score-pill{display:inline-flex;align-items:center;font-size:11px;font-weight:700;padding:2px 10px;border-radius:10px;}
+.score-null{background:var(--gray-100);color:var(--gray-400);}
+.score-0{background:#fee2e2;color:#dc2626;}
+.score-1{background:#FDF6E3;color:#b45309;}
+.score-2{background:var(--blue-light);color:var(--blue);}
+.score-3{background:var(--green-light);color:var(--green);}
+.scoring-guide{background:var(--gray-50);border:1px solid var(--gray-200);border-radius:10px;padding:14px 16px;margin-bottom:20px;}
+.scoring-guide-title{font-size:12px;font-weight:700;color:var(--gray-600);margin-bottom:8px;}
+.scoring-guide-items{display:flex;gap:16px;flex-wrap:wrap;}
+.score-badge{display:inline-flex;align-items:center;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;}
+.score-0b{background:var(--gray-100);color:var(--gray-400);}
+.score-1b{background:#FDF6E3;color:#b45309;}
+.score-2b{background:var(--blue-light);color:var(--blue);}
+.score-3b{background:var(--green-light);color:var(--green);}
 </style>
 </head>
 <body>
@@ -246,10 +193,7 @@
 <!-- LOGIN -->
 <div class="login-screen" id="login-screen">
   <div class="login-box">
-    <div class="login-logo">
-      <h1>Training Record System</h1>
-      <p>Admin Portal</p>
-    </div>
+    <div class="login-logo"><h1>Training Record System</h1><p>Admin Portal</p></div>
     <div class="login-error" id="login-error">Invalid username or password</div>
     <div class="form-group"><label class="form-label">Username</label><input class="form-input" id="login-user" placeholder="Admin username"></div>
     <div class="form-group"><label class="form-label">Password</label><input class="form-input" id="login-pass" type="password" placeholder="Password" onkeydown="if(event.key==='Enter')doLogin()"></div>
@@ -263,7 +207,7 @@
     <div class="sidebar-logo"><h2>Training Record</h2><span>Admin Portal</span></div>
     <nav class="sidebar-nav">
       <div class="nav-label">Admin</div>
-      <div class="nav-item active" onclick="showPage('dashboard')" id="nav-dashboard"><span>📊</span> Dashboard <span class="nav-badge" id="pending-badge">0</span></div>
+      <div class="nav-item active" onclick="showPage('dashboard')" id="nav-dashboard"><span>📊</span> Dashboard <span class="nav-badge" id="pending-badge"></span></div>
       <div class="nav-item" onclick="showPage('employees')" id="nav-employees"><span>👥</span> Employees</div>
       <div class="nav-item" onclick="showPage('questions')" id="nav-questions"><span>📝</span> Test Questions</div>
       <div class="nav-item" onclick="showPage('plans')" id="nav-plans"><span>📋</span> Training Plans</div>
@@ -271,7 +215,7 @@
     <div class="sidebar-footer">
       <div class="sidebar-avatar">A</div>
       <div><div class="sidebar-user-name">Admin</div><div class="sidebar-user-role">Administrator</div></div>
-      <button class="logout-btn" onclick="logout()" title="Logout">⏻</button>
+      <button class="logout-btn" onclick="logout()">⏻</button>
     </div>
   </aside>
 
@@ -331,66 +275,26 @@
       </div>
     </div>
 
-
     <!-- TRAINING PLANS -->
-    <!-- TRAINING PLANS PAGE -->
     <div class="page" id="page-plans">
-      <div style="background:var(--blue);color:white;padding:16px 28px;display:flex;align-items:center;justify-content:space-between;">
-        <div style="font-size:15px;font-weight:700;">📋 Training Plans</div>
-        <button class="btn btn-sm" style="background:rgba(255,255,255,0.2);color:white;border:1px solid rgba(255,255,255,0.3)" onclick="openNewPlanModal()">+ New Plan</button>
-      </div>
-      <div style="padding:24px;">
-        <div class="scoring-guide">
-          <div class="scoring-guide-title">Weekly Deliverable Scoring Guide</div>
-          <div class="scoring-guide-items">
-            <div class="score-item"><span class="score-badge score-3">3</span> Exceeded — above-standard quality, no corrections</div>
-            <div class="score-item"><span class="score-badge score-2">2</span> Met — exactly as required, minor corrections only</div>
-            <div class="score-item"><span class="score-badge score-1">1</span> Partial — incomplete or required significant rework</div>
-            <div class="score-item"><span class="score-badge score-0">0</span> Missed — not submitted by review deadline</div>
-          </div>
+      <div class="scoring-guide">
+        <div class="scoring-guide-title">Weekly Deliverable Scoring Guide</div>
+        <div class="scoring-guide-items">
+          <div style="display:flex;align-items:center;gap:6px;font-size:12px;"><span class="score-badge score-3b">3</span> Exceeded</div>
+          <div style="display:flex;align-items:center;gap:6px;font-size:12px;"><span class="score-badge score-2b">2</span> Met</div>
+          <div style="display:flex;align-items:center;gap:6px;font-size:12px;"><span class="score-badge score-1b">1</span> Partial</div>
+          <div style="display:flex;align-items:center;gap:6px;font-size:12px;"><span class="score-badge score-0b">0</span> Missed</div>
+          <button class="btn btn-primary btn-sm" style="margin-left:auto" onclick="openNewPlanModal()">+ New Plan</button>
         </div>
-        <div id="plans-container"><div class="loading">Loading training plans...</div></div>
       </div>
+      <div id="plans-container"><div class="loading">Loading training plans...</div></div>
     </div>
 
     <!-- DETAIL -->
-    <div class="page" id="page-detail">
-      <div id="detail-content"></div>
-    </div>
+    <div class="page" id="page-detail"><div id="detail-content"></div></div>
   </div>
 </div>
 
-
-<!-- ADD PLAN MODAL -->
-<div class="modal-overlay" id="plan-modal">
-  <div class="modal">
-    <div class="modal-title">Add Training Plan</div>
-    <div class="modal-sub">Create a new training plan</div>
-    <div class="form-group"><label class="form-label">Plan Name</label><input class="form-input" id="plan-name" placeholder="e.g. Safety Training 2026"></div>
-    <div class="form-group"><label class="form-label">Description</label><input class="form-input" id="plan-desc" placeholder="Brief description (optional)"></div>
-    <div class="modal-actions">
-      <button class="btn btn-outline" onclick="closeModal('plan-modal')">Cancel</button>
-      <button class="btn btn-primary" onclick="addPlan()">Create Plan</button>
-    </div>
-  </div>
-</div>
-
-<!-- PLAN MEMBERS MODAL -->
-<div class="modal-overlay" id="members-modal">
-  <div class="modal" style="width:520px">
-    <div class="modal-title" id="members-modal-title">Plan Members</div>
-    <div class="modal-sub">Add or remove employees from this plan</div>
-    <div id="members-list" style="max-height:300px;overflow-y:auto;margin-bottom:14px;"></div>
-    <div class="form-group">
-      <label class="form-label">Add Employee</label>
-      <select class="form-input" id="member-select"></select>
-    </div>
-    <div class="modal-actions">
-      <button class="btn btn-outline" onclick="closeModal('members-modal')">Close</button>
-      <button class="btn btn-primary" onclick="addMember()">Add to Plan</button>
-    </div>
-  </div>
-</div>
 <!-- ADD EMPLOYEE MODAL -->
 <div class="modal-overlay" id="add-modal">
   <div class="modal">
@@ -416,7 +320,7 @@
   <div class="modal">
     <div class="modal-title">Add Test Question</div>
     <div class="modal-sub">Question will appear in the employee assessment test</div>
-    <div class="form-group"><label class="form-label">Training Plan</label><select class="form-input" id="q-plan"><option value="">-- Select Plan --</option></select></div>
+    <div class="form-group"><label class="form-label">Training Plan (optional)</label><select class="form-input" id="q-plan"><option value="">-- All employees --</option></select></div>
     <div class="form-group"><label class="form-label">Question Text</label><input class="form-input" id="q-text" placeholder="Enter the question"></div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
       <div class="form-group"><label class="form-label">Option A</label><input class="form-input" id="q-a" placeholder="Option A"></div>
@@ -424,14 +328,8 @@
       <div class="form-group"><label class="form-label">Option C</label><input class="form-input" id="q-c" placeholder="Option C"></div>
       <div class="form-group"><label class="form-label">Option D</label><input class="form-input" id="q-d" placeholder="Option D"></div>
     </div>
-    <div class="form-group">
-      <label class="form-label">Correct Answer</label>
-      <select class="form-input" id="q-correct">
-        <option value="A">A</option>
-        <option value="B">B</option>
-        <option value="C">C</option>
-        <option value="D">D</option>
-      </select>
+    <div class="form-group"><label class="form-label">Correct Answer</label>
+      <select class="form-input" id="q-correct"><option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="D">D</option></select>
     </div>
     <div class="modal-actions">
       <button class="btn btn-outline" onclick="closeModal('q-modal')">Cancel</button>
@@ -445,8 +343,7 @@
   <div class="modal">
     <div class="modal-title">Manager Sign-off</div>
     <div class="modal-sub" id="signoff-sub">Certify employee training record</div>
-    <div class="sign-box">
-      <p>Draw your signature below</p>
+    <div class="sign-box"><p>Draw your signature below</p>
       <canvas class="sign-canvas" id="sign-canvas" width="420" height="70"></canvas>
       <button class="btn btn-outline btn-sm" onclick="clearSig()">Clear</button>
     </div>
@@ -457,286 +354,70 @@
   </div>
 </div>
 
+<!-- NEW PLAN MODAL -->
+<div class="modal-overlay" id="plan-modal">
+  <div class="modal">
+    <div class="modal-title">New Training Plan</div>
+    <div class="modal-sub">Create a plan with phases and weekly deliverables</div>
+    <div class="form-group"><label class="form-label">Plan Name</label><input class="form-input" id="plan-name" placeholder="e.g. Ygii Tech Training — 3 Month"></div>
+    <div class="form-group"><label class="form-label">Description</label><input class="form-input" id="plan-desc" placeholder="Brief description"></div>
+    <div class="form-group"><label class="form-label">Number of Phases</label>
+      <select class="form-input" id="plan-phases" onchange="buildPhaseInputs()">
+        <option value="1">1 Phase</option><option value="2">2 Phases</option><option value="3" selected>3 Phases</option><option value="4">4 Phases</option>
+      </select>
+    </div>
+    <div id="phase-inputs"></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal('plan-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="createPlan()">Create Plan</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD WEEK MODAL -->
+<div class="modal-overlay" id="week-modal">
+  <div class="modal">
+    <div class="modal-title" id="week-modal-title">Add Week</div>
+    <div class="modal-sub">Add a weekly deliverable to this phase</div>
+    <div class="form-group"><label class="form-label">Week Title</label><input class="form-input" id="wk-title" placeholder="e.g. Product & Company Immersion"></div>
+    <div class="form-group"><label class="form-label">KPIs / Deliverables</label><input class="form-input" id="wk-kpis" placeholder="e.g. PRD, Testing, Training"></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal('week-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveWeek()">Add Week</button>
+    </div>
+  </div>
+</div>
+
+<!-- PLAN MEMBERS MODAL -->
+<div class="modal-overlay" id="members-modal">
+  <div class="modal" style="width:520px">
+    <div class="modal-title" id="members-modal-title">Plan Members</div>
+    <div class="modal-sub">Add or remove employees from this plan</div>
+    <div id="members-list" style="max-height:220px;overflow-y:auto;margin-bottom:14px;border:1px solid var(--gray-200);border-radius:8px;"></div>
+    <div class="form-group"><label class="form-label">Add Employee</label><select class="form-input" id="member-select"></select></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal('members-modal')">Close</button>
+      <button class="btn btn-primary" onclick="addMember()">Add to Plan</button>
+    </div>
+  </div>
+</div>
+
 <script>
-const SUPABASE_URL = 'https://vuuamwlrnyobhlxtblzk.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ1dWFtd2xybnlvYmhseHRibHprIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwNTUwODgsImV4cCI6MjA5MTYzMTA4OH0.dRmGWQZPH5pKDf6-_KqJJLzxTXMWg3uvw5CIcDwNisc';
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const SURL='https://vuuamwlrnyobhlxtblzk.supabase.co';
+const SKEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ1dWFtd2xybnlvYmhseHRibHprIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwNTUwODgsImV4cCI6MjA5MTYzMTA4OH0.dRmGWQZPH5pKDf6-_KqJJLzxTXMWg3uvw5CIcDwNisc';
+const sb=supabase.createClient(SURL,SKEY);
 
 const ADMIN_USER='admin', ADMIN_PASS='admin123';
-let allEmployees=[], currentFilter='all', searchVal='', signoffTarget=null, isDrawing=false, signCtx=null;
-let allPlans=[], currentPlanId=null, weekTarget=null, memberTarget=null;
+let employees=[], plans=[], currentFilter='all', searchVal='', signoffTarget=null, isDrawing=false, signCtx=null, weekTarget=null, currentPlanId=null;
 const STAGES=['Test','Order 1','Order 2','Manager Sign-off','Trainee Sign-off'];
 
-// ── AUTH ─────────────────────────────────────────────────────────
+// ── AUTH ──────────────────────────────────────────────────────────
 function doLogin(){
   const u=document.getElementById('login-user').value.trim();
   const p=document.getElementById('login-pass').value.trim();
   if(u===ADMIN_USER&&p===ADMIN_PASS){
-    sessionStorage.setItem('admin_logged_in','true');
-    // ── LOAD ──────────────────────────────────────────────────────────
-async function loadAll() {
-  const container = document.getElementById('plans-container');
-  if(container) container.innerHTML = '<div class="loading">Loading training plans...</div>';
-  const [plansRes, empsRes] = await Promise.all([
-    sb.from('training_plans').select('*').order('created_at'),
-    sb.from('training_employees').select('id,name,emp_id').order('name')
-  ]);
-  allPlans = plansRes.data || [];
-  if(empsRes.data) allEmployees = empsRes.data;
-  for (const p of allPlans) {
-    const { data } = await sb.from('training_plan_members')
-      .select('employee_id, training_employees(name,emp_id)')
-      .eq('plan_id', p.id);
-    p.members = data || [];
-  }
-  renderPlans();
-}
-
-// ── RENDER ────────────────────────────────────────────────────────
-function renderPlans() {
-  const container = document.getElementById('plans-container');
-  if (!allPlans.length) {
-    container.innerHTML = `<div class="empty"><div class="empty-icon">📋</div><div style="font-size:15px;font-weight:600;margin-bottom:8px">No training plans yet</div><div style="font-size:13px;margin-bottom:16px">Create your first training plan</div><button class="btn btn-primary" onclick="openNewPlanModal()">+ New Plan</button></div>`;
-    return;
-  }
-  container.innerHTML = allPlans.map(p => renderPlanCard(p)).join('');
-}
-
-function renderPlanCard(p) {
-  const phases = p.phases || [];
-  const membersHTML = p.members && p.members.length
-    ? p.members.map(m => `<span class="member-chip">${m.training_employees.name}<span class="remove" onclick="removeMember('${p.id}','${m.employee_id}')">✕</span></span>`).join('')
-    : '<span style="font-size:12px;color:var(--gray-400)">No members yet</span>';
-
-  const phasesHTML = phases.length
-    ? phases.map((ph, pi) => renderPhase(p.id, ph, pi)).join('')
-    : `<div style="text-align:center;padding:20px;color:var(--gray-400);font-size:13px">No phases added yet</div>`;
-
-  return `
-  <div class="plan-card" id="plan-${p.id}">
-    <div class="plan-header">
-      <div>
-        <div class="plan-title">${p.name}</div>
-        ${p.description ? `<div class="plan-desc">${p.description}</div>` : ''}
-      </div>
-      <div class="plan-header-actions">
-        <button class="btn btn-sm" style="background:rgba(255,255,255,0.2);color:white;border:1px solid rgba(255,255,255,0.3)" onclick="addPhase('${p.id}')">+ Phase</button>
-        <button class="btn btn-sm" style="background:rgba(234,67,93,0.8);color:white;" onclick="deletePlan('${p.id}','${p.name}')">Delete</button>
-      </div>
-    </div>
-    <div class="members-bar">
-      <span style="font-size:11px;font-weight:700;color:var(--purple);margin-right:4px">👥 Members:</span>
-      ${membersHTML}
-      <button class="add-member-btn" onclick="openMemberModal('${p.id}','${p.name}')">+ Add</button>
-    </div>
-    <div class="phases-container">
-      ${phasesHTML}
-    </div>
-  </div>`;
-}
-
-function renderPhase(planId, ph, pi) {
-  const weeks = ph.weeks || [];
-  const weeksHTML = weeks.length
-    ? `<table class="weeks-table">
-        <thead><tr>
-          <th style="width:70px">Week</th>
-          <th>Deliverable / Title</th>
-          <th>KPIs</th>
-          <th style="width:80px">Score</th>
-          <th style="width:40px"></th>
-        </tr></thead>
-        <tbody>
-          ${weeks.map((w, wi) => `<tr>
-            <td class="week-num">Week ${w.num||wi+1}</td>
-            <td><div class="week-title">${w.title||'—'}</div></td>
-            <td><div class="week-kpis">${w.kpis||'—'}</div></td>
-            <td>
-              <select onchange="updateScore('${planId}',${pi},${wi},this.value)" style="border:1px solid var(--gray-200);border-radius:6px;padding:3px 6px;font-size:12px;font-family:'DM Sans',sans-serif;">
-                <option value="" ${!w.score&&w.score!==0?'selected':''}>—</option>
-                <option value="0" ${w.score===0?'selected':''}>0 — Missed</option>
-                <option value="1" ${w.score===1?'selected':''}>1 — Partial</option>
-                <option value="2" ${w.score===2?'selected':''}>2 — Met</option>
-                <option value="3" ${w.score===3?'selected':''}>3 — Exceeded</option>
-              </select>
-            </td>
-            <td><button class="btn btn-xs btn-red" onclick="removeWeek('${planId}',${pi},${wi})">✕</button></td>
-          </tr>`).join('')}
-        </tbody>
-       </table>`
-    : `<div style="text-align:center;padding:12px;color:var(--gray-400);font-size:12px">No weeks added yet</div>`;
-
-  const total = weeks.reduce((s,w)=>s+(w.score||0),0);
-  const max = weeks.length * 3;
-
-  return `
-  <div class="phase-block">
-    <div class="phase-header">
-      <div class="phase-title-row">
-        <span class="phase-badge">Phase ${pi+1}</span>
-        <span style="font-size:14px;font-weight:600">${ph.name||'Phase '+(pi+1)}</span>
-        <span class="phase-period">${ph.period||''}</span>
-      </div>
-      <div style="display:flex;align-items:center;gap:8px;">
-        ${max>0?`<span style="font-size:12px;font-weight:600;color:var(--purple)">${total}/${max}</span>`:''}
-        <button class="btn btn-sm btn-outline" onclick="openWeekModal('${planId}',${pi})">+ Week</button>
-        <button class="btn btn-xs" style="background:var(--red-light);color:var(--red);border:none;padding:3px 8px;border-radius:6px;cursor:pointer;" onclick="removePhase('${planId}',${pi})">✕</button>
-      </div>
-    </div>
-    ${weeksHTML}
-  </div>`;
-}
-
-// ── CREATE PLAN ───────────────────────────────────────────────────
-function updatePhaseInputs() {
-  const n = parseInt(document.getElementById('np-phases').value);
-  const container = document.getElementById('phase-inputs');
-  container.innerHTML = Array.from({length:n},(_,i)=>`
-    <div style="background:var(--gray-50);border-radius:8px;padding:12px;margin-bottom:10px;">
-      <div style="font-size:12px;font-weight:700;color:var(--purple);margin-bottom:8px">Phase ${i+1}</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-        <div class="form-group" style="margin-bottom:0">
-          <label class="form-label">Phase Name</label>
-          <input class="form-input" id="ph-name-${i}" placeholder="e.g. Foundation">
-        </div>
-        <div class="form-group" style="margin-bottom:0">
-          <label class="form-label">Period</label>
-          <input class="form-input" id="ph-period-${i}" placeholder="e.g. Month 1 (W1–W4)">
-        </div>
-      </div>
-    </div>`).join('');
-}
-
-async function createPlan() {
-  const name = document.getElementById('np-name').value.trim();
-  const description = document.getElementById('np-desc').value.trim();
-  if (!name) { alert('Please enter a plan name'); return; }
-  const n = parseInt(document.getElementById('np-phases').value);
-  const phases = Array.from({length:n},(_,i)=>({
-    name: document.getElementById(`ph-name-${i}`)?.value.trim() || `Phase ${i+1}`,
-    period: document.getElementById(`ph-period-${i}`)?.value.trim() || '',
-    weeks: []
-  }));
-  const { error } = await sb.from('training_plans').insert([{ name, description, phases }]);
-  if (error) { alert('Error: '+error.message); return; }
-  closeModal('new-plan-modal');
-  document.getElementById('np-name').value='';
-  document.getElementById('np-desc').value='';
-  await loadAll();
-}
-
-// ── PHASES ────────────────────────────────────────────────────────
-async function addPhase(planId) {
-  const plan = allPlans.find(p=>p.id===planId);
-  if (!plan) return;
-  const phases = plan.phases || [];
-  const n = phases.length + 1;
-  const name = prompt(`Phase ${n} name:`, `Phase ${n}`) || `Phase ${n}`;
-  const period = prompt('Period (e.g. Month 2 (W5–W8)):') || '';
-  phases.push({ name, period, weeks: [] });
-  await sb.from('training_plans').update({ phases }).eq('id', planId);
-  await loadAll();
-}
-
-async function removePhase(planId, pi) {
-  if (!confirm('Remove this phase?')) return;
-  const plan = allPlans.find(p=>p.id===planId);
-  const phases = [...(plan.phases||[])];
-  phases.splice(pi, 1);
-  await sb.from('training_plans').update({ phases }).eq('id', planId);
-  await loadAll();
-}
-
-// ── WEEKS ─────────────────────────────────────────────────────────
-let weekTarget = null;
-function openWeekModal(planId, phaseIdx) {
-  weekTarget = { planId, phaseIdx };
-  document.getElementById('week-modal-title').textContent = `Add Week to Phase ${phaseIdx+1}`;
-  document.getElementById('wk-title').value = '';
-  document.getElementById('wk-kpis').value = '';
-  document.getElementById('week-modal').classList.add('show');
-}
-
-async function saveWeek() {
-  if (!weekTarget) return;
-  const title = document.getElementById('wk-title').value.trim();
-  const kpis = document.getElementById('wk-kpis').value.trim();
-  if (!title) { alert('Please enter a week title'); return; }
-  const plan = allPlans.find(p=>p.id===weekTarget.planId);
-  const phases = JSON.parse(JSON.stringify(plan.phases||[]));
-  const ph = phases[weekTarget.phaseIdx];
-  if (!ph.weeks) ph.weeks = [];
-  ph.weeks.push({ num: ph.weeks.length+1, title, kpis, score: null });
-  await sb.from('training_plans').update({ phases }).eq('id', weekTarget.planId);
-  closeModal('week-modal');
-  await loadAll();
-}
-
-async function removeWeek(planId, pi, wi) {
-  const plan = allPlans.find(p=>p.id===planId);
-  const phases = JSON.parse(JSON.stringify(plan.phases||[]));
-  phases[pi].weeks.splice(wi,1);
-  phases[pi].weeks.forEach((w,i)=>w.num=i+1);
-  await sb.from('training_plans').update({ phases }).eq('id', planId);
-  await loadAll();
-}
-
-async function updateScore(planId, pi, wi, val) {
-  const plan = allPlans.find(p=>p.id===planId);
-  const phases = JSON.parse(JSON.stringify(plan.phases||[]));
-  phases[pi].weeks[wi].score = val===''?null:parseInt(val);
-  await sb.from('training_plans').update({ phases }).eq('id', planId);
-  // update local without full reload for performance
-  plan.phases = phases;
-  // re-render just the score totals
-}
-
-// ── DELETE PLAN ───────────────────────────────────────────────────
-async function deletePlan(id, name) {
-  if (!confirm(`Delete plan "${name}"?`)) return;
-  await sb.from('training_plans').delete().eq('id', id);
-  await loadAll();
-}
-
-// ── MEMBERS ───────────────────────────────────────────────────────
-let memberTarget = null;
-function openMemberModal(planId, planName) {
-  memberTarget = planId;
-  document.getElementById('member-modal-sub').textContent = `Add employee to: ${planName}`;
-  const plan = allPlans.find(p=>p.id===planId);
-  const existingIds = (plan.members||[]).map(m=>m.employee_id);
-  const available = allEmployees.filter(e=>!existingIds.includes(e.id));
-  const sel = document.getElementById('member-select');
-  if (!available.length) {
-    sel.innerHTML = '<option>All employees already added</option>';
-  } else {
-    sel.innerHTML = available.map(e=>`<option value="${e.id}">${e.name} (${e.emp_id})</option>`).join('');
-  }
-  document.getElementById('member-modal').classList.add('show');
-}
-
-async function addMemberToPlan() {
-  const empId = document.getElementById('member-select').value;
-  if (!empId || !memberTarget) return;
-  const { error } = await sb.from('training_plan_members').insert([{ plan_id: memberTarget, employee_id: empId }]);
-  if (error) { alert('Error: '+error.message); return; }
-  closeModal('member-modal');
-  await loadAll();
-}
-
-async function removeMember(planId, empId) {
-  await sb.from('training_plan_members').delete().eq('plan_id',planId).eq('employee_id',empId);
-  await loadAll();
-}
-
-// ── UTILS ─────────────────────────────────────────────────────────
-function openNewPlanModal() {
-  updatePhaseInputs();
-  document.getElementById('new-plan-modal').classList.add('show');
-}
-function closeModal(id) { document.getElementById(id).classList.remove('show'); }
-
-document.getElementById('login-screen').style.display='none';
+    sessionStorage.setItem('admin_auth','1');
+    document.getElementById('login-screen').style.display='none';
     document.getElementById('app').style.display='flex';
     loadEmployees();
   } else {
@@ -744,47 +425,9 @@ document.getElementById('login-screen').style.display='none';
   }
 }
 function logout(){
-  sessionStorage.removeItem('admin_logged_in');
+  sessionStorage.removeItem('admin_auth');
   document.getElementById('app').style.display='none';
-  // ── LOAD ──────────────────────────────────────────────────────────
-
-// ── RENDER ────────────────────────────────────────────────────────
-
-
-
-// ── CREATE PLAN ───────────────────────────────────────────────────
-
-// ── PHASES ────────────────────────────────────────────────────────
-
-
-// ── WEEKS ─────────────────────────────────────────────────────────
-
-
-
-
-
-// ── DELETE PLAN ───────────────────────────────────────────────────
-
-// ── MEMBERS ───────────────────────────────────────────────────────
-
-
-
-
-// ── UTILS ─────────────────────────────────────────────────────────
-
-function closeModal(id) { document.getElementById(id).classList.remove('show'); }
-
-document.getElementById('login-screen').style.display='flex';
-  document.getElementById('login-user').value='';
-  document.getElementById('login-pass').value='';
-}
-
-// ── SUPABASE LOAD ─────────────────────────────────────────────────
-async function loadEmployees(){
-  const{data,error}=await sb.from('training_employees').select('*').order('created_at');
-  if(error){console.error(error);return;}
-  allEmployees=data||[];
-  renderAll();
+  document.getElementById('login-screen').style.display='flex';
 }
 
 // ── HELPERS ──────────────────────────────────────────────────────
@@ -805,27 +448,28 @@ function stageTrack(e){
   }).join('')+'</div>';
 }
 
-// ── RENDER ────────────────────────────────────────────────────────
-function renderAll(){
-  const total=allEmployees.length;
-  const cert=allEmployees.filter(e=>e.trainee_signed).length;
-  const pend=allEmployees.filter(e=>e.stage>=3&&!e.mgr_signed).length;
+// ── EMPLOYEES ─────────────────────────────────────────────────────
+async function loadEmployees(){
+  const{data}=await sb.from('training_employees').select('*').order('created_at');
+  employees=data||[];
+  renderEmployees();
+  updateStats();
+}
+function updateStats(){
+  const total=employees.length, cert=employees.filter(e=>e.trainee_signed).length, pend=employees.filter(e=>e.stage>=3&&!e.mgr_signed).length;
   document.getElementById('stat-total').textContent=total;
   document.getElementById('stat-cert').textContent=cert;
   document.getElementById('stat-prog').textContent=total-cert;
   document.getElementById('stat-pend').textContent=pend;
   const pb=document.getElementById('pending-badge');
   pb.textContent=pend; pb.style.display=pend?'inline':'none';
-
-  let filtered=allEmployees.filter(e=>{
+}
+function renderEmployees(){
+  let filtered=employees.filter(e=>{
     const ms=e.name.toLowerCase().includes(searchVal.toLowerCase())||e.department.toLowerCase().includes(searchVal.toLowerCase());
-    const mf=currentFilter==='all'
-      ||(currentFilter==='progress'&&!e.trainee_signed&&e.stage<3)
-      ||(currentFilter==='pending'&&e.stage>=3&&!e.mgr_signed)
-      ||(currentFilter==='certified'&&e.trainee_signed);
+    const mf=currentFilter==='all'||(currentFilter==='progress'&&!e.trainee_signed&&e.stage<3)||(currentFilter==='pending'&&e.stage>=3&&!e.mgr_signed)||(currentFilter==='certified'&&e.trainee_signed);
     return ms&&mf;
   });
-
   const tb=document.getElementById('emp-tbody');
   if(tb) tb.innerHTML=filtered.length?filtered.map(e=>`<tr>
     <td><strong>${e.name}</strong><br><span style="font-size:11px;color:var(--gray-400)">${e.emp_id}</span></td>
@@ -835,11 +479,9 @@ function renderAll(){
     <td style="display:flex;gap:4px;">
       <button class="btn btn-outline btn-sm" onclick="viewDetail('${e.id}')">View</button>
       ${e.stage>=3&&!e.mgr_signed?`<button class="btn btn-green btn-sm" onclick="openSignModal('${e.id}')">Sign-off</button>`:''}
-    </td></tr>`).join('')
-    :`<tr><td colspan="6" style="text-align:center;padding:32px;color:var(--gray-400)">No employees found</td></tr>`;
-
+    </td></tr>`).join(''):`<tr><td colspan="6" style="text-align:center;padding:32px;color:var(--gray-400)">No employees found</td></tr>`;
   const tb2=document.getElementById('emp-tbody2');
-  if(tb2) tb2.innerHTML=allEmployees.map(e=>`<tr>
+  if(tb2) tb2.innerHTML=employees.map(e=>`<tr>
     <td><strong>${e.name}</strong></td>
     <td style="font-family:'DM Mono',monospace;font-size:12px">${e.emp_id}</td>
     <td>${e.department}</td><td>${e.title}</td>
@@ -850,192 +492,307 @@ function renderAll(){
       <button class="btn btn-red btn-sm" onclick="deleteEmployee('${e.id}','${e.name}')">Delete</button>
     </td></tr>`).join('');
 }
+async function addEmployee(){
+  const name=document.getElementById('new-name').value.trim(), emp_id=document.getElementById('new-empid').value.trim();
+  const department=document.getElementById('new-dept').value.trim(), title=document.getElementById('new-title').value.trim();
+  const username=document.getElementById('new-username').value.trim(), password=document.getElementById('new-password').value.trim();
+  if(!name||!emp_id||!department||!title||!username||!password){alert('Please fill all fields');return;}
+  const{error}=await sb.from('training_employees').insert([{name,emp_id,department,title,username,password,stage:0}]);
+  if(error){alert('Error: '+error.message);return;}
+  closeModal('add-modal');
+  ['new-name','new-empid','new-dept','new-title','new-username','new-password'].forEach(i=>document.getElementById(i).value='');
+  await loadEmployees();
+  alert(`✓ ${name} added! Login: ${username} / ${password}`);
+}
+async function deleteEmployee(id,name){
+  if(!confirm(`Delete ${name}?`))return;
+  await sb.from('training_employees').delete().eq('id',id);
+  await loadEmployees();
+}
 
-// ── VIEW DETAIL ───────────────────────────────────────────────────
+// ── EMPLOYEE DETAIL ────────────────────────────────────────────────
 async function viewDetail(id){
   showPage('detail');
-  const e=allEmployees.find(x=>x.id===id);
+  const e=employees.find(x=>x.id===id);
   if(!e)return;
-
   const steps=STAGES.map((s,i)=>{
-    const done=e.trainee_signed||(i<e.stage);
-    const cur=i===e.stage&&!e.trainee_signed;
+    const done=e.trainee_signed||(i<e.stage), cur=i===e.stage&&!e.trainee_signed;
     const cls=done?'done':(cur?'active':'locked');
     return `${i>0?`<div class="step-connector ${i<=e.stage||e.trainee_signed?'done':''}"></div>`:''}
     <div class="step"><div class="step-circle ${cls}">${done?'✓':i+1}</div><div class="step-label ${cls}">${s}</div></div>`;
   }).join('');
-
   const testHTML=e.test_score!=null
-    ?`<div style="display:flex;align-items:center;gap:16px">
-        <div class="score-circle"><div class="score-num">${e.test_score}/10</div><div class="score-lbl">SCORE</div></div>
-        <div><div style="font-size:13px;font-weight:700;color:var(--green)">✓ Passed</div><div style="font-size:12px;color:var(--gray-400)">Min 8/10 required</div></div>
-       </div>`
+    ?`<div style="display:flex;align-items:center;gap:16px"><div class="score-circle"><div class="score-num">${e.test_score}/10</div><div class="score-lbl">SCORE</div></div><div><div style="font-size:13px;font-weight:700;color:var(--green)">✓ Passed</div><div style="font-size:12px;color:var(--gray-400)">Min 8/10</div></div></div>`
     :`<div style="text-align:center;padding:20px;color:var(--gray-400)"><div style="font-size:24px;margin-bottom:6px">📝</div><div>Test not taken yet</div></div>`;
-
   const orderHTML=(done,num,date,task)=>done
-    ?`<div class="field-row"><span class="field-key">Status</span><span class="field-val"><span class="badge green">✓ Confirmed</span></span></div>
-       <div class="field-row"><span class="field-key">Task</span><span class="field-val">${task||'—'}</span></div>
-       <div class="field-row"><span class="field-key">Date</span><span class="field-val">${date||'—'}</span></div>`
-    :`<div style="text-align:center;padding:16px;color:var(--gray-400)"><div style="font-size:13px">Not submitted yet</div></div>`;
-
+    ?`<div class="field-row"><span class="field-key">Status</span><span class="field-val"><span class="badge green">✓ Confirmed</span></span></div><div class="field-row"><span class="field-key">Task</span><span class="field-val">${task||'—'}</span></div><div class="field-row"><span class="field-key">Date</span><span class="field-val">${date||'—'}</span></div>`
+    :`<div style="text-align:center;padding:16px;color:var(--gray-400)">Not submitted yet</div>`;
   document.getElementById('detail-content').innerHTML=`
-    <div class="emp-page-header">
-      <div>
-        <div style="display:flex;align-items:center;gap:10px;">
-          <button class="btn btn-outline btn-sm" onclick="showPage('dashboard')">← Back</button>
-          <div class="emp-page-name">${e.name}</div>
-        </div>
-        <div class="emp-page-meta">${e.emp_id} · ${e.title} · ${e.department}</div>
-      </div>
-      <span class="badge ${getStatus(e).cls}" style="font-size:13px;padding:6px 14px">${getStatus(e).label}</span>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">
+      <button class="btn btn-outline btn-sm" onclick="showPage('dashboard')">← Back</button>
+      <div><div class="emp-page-name">${e.name}</div><div class="emp-page-meta">${e.emp_id} · ${e.title} · ${e.department}</div></div>
+      <span class="badge ${getStatus(e).cls}" style="margin-left:auto;font-size:13px;padding:6px 14px">${getStatus(e).label}</span>
     </div>
     <div class="progress-stepper">${steps}</div>
     <div class="detail-grid">
-      <div class="detail-card">
-        <div class="detail-card-header"><div class="detail-card-title"><div class="dot dot-blue"></div>Assessment Test</div></div>
-        ${testHTML}
-      </div>
-      <div class="detail-card">
-        <div class="detail-card-header"><div class="detail-card-title"><div class="dot dot-orange"></div>Order 1</div>${e.order1_done?'<span class="badge green">Confirmed</span>':'<span class="badge gray">Pending</span>'}</div>
-        ${orderHTML(e.order1_done,1,e.order1_date,e.order1_task)}
-      </div>
+      <div class="detail-card"><div class="detail-card-header"><div class="detail-card-title"><div class="dot dot-blue"></div>Assessment Test</div></div>${testHTML}</div>
+      <div class="detail-card"><div class="detail-card-header"><div class="detail-card-title"><div class="dot dot-blue"></div>Order 1</div>${e.order1_done?'<span class="badge green">Confirmed</span>':'<span class="badge gray">Pending</span>'}</div>${orderHTML(e.order1_done,1,e.order1_date,e.order1_task)}</div>
     </div>
     <div class="detail-grid">
-      <div class="detail-card">
-        <div class="detail-card-header"><div class="detail-card-title"><div class="dot dot-orange"></div>Order 2</div>${e.order2_done?'<span class="badge green">Confirmed</span>':'<span class="badge gray">Pending</span>'}</div>
-        ${orderHTML(e.order2_done,2,e.order2_date,e.order2_task)}
-      </div>
-      <div class="detail-card">
-        <div class="detail-card-header"><div class="detail-card-title"><div class="dot dot-green"></div>Sign-off</div></div>
-        <div class="field-row"><span class="field-key">Manager Sign-off</span><span class="field-val">${e.mgr_signed?`<span class="signed-stamp">✓ Signed ${e.mgr_signed_at?new Date(e.mgr_signed_at).toLocaleDateString():''}</span>`:(e.stage>=3?`<button class="btn btn-green btn-sm" onclick="openSignModal('${e.id}')">Sign as Manager</button>`:'<span style="font-size:12px;color:var(--gray-400)">Awaiting previous stages</span>')}</span></div>
-        <div class="field-row"><span class="field-key">Trainee Sign-off</span><span class="field-val">${e.trainee_signed?`<span class="signed-stamp">✓ Signed ${e.trainee_signed_at?new Date(e.trainee_signed_at).toLocaleDateString():''}</span>`:'<span style="font-size:12px;color:var(--gray-400)">Pending trainee action</span>'}</span></div>
+      <div class="detail-card"><div class="detail-card-header"><div class="detail-card-title"><div class="dot dot-blue"></div>Order 2</div>${e.order2_done?'<span class="badge green">Confirmed</span>':'<span class="badge gray">Pending</span>'}</div>${orderHTML(e.order2_done,2,e.order2_date,e.order2_task)}</div>
+      <div class="detail-card"><div class="detail-card-header"><div class="detail-card-title"><div class="dot dot-green"></div>Sign-off</div></div>
+        <div class="field-row"><span class="field-key">Manager Sign-off</span><span class="field-val">${e.mgr_signed?`<span class="signed-stamp">✓ Signed</span>`:(e.stage>=3?`<button class="btn btn-green btn-sm" onclick="openSignModal('${e.id}')">Sign as Manager</button>`:'<span style="font-size:12px;color:var(--gray-400)">Awaiting stages</span>')}</span></div>
+        <div class="field-row"><span class="field-key">Trainee Sign-off</span><span class="field-val">${e.trainee_signed?`<span class="signed-stamp">✓ Signed</span>`:'<span style="font-size:12px;color:var(--gray-400)">Pending</span>'}</span></div>
       </div>
     </div>`;
-}
-
-// ── ADD EMPLOYEE ──────────────────────────────────────────────────
-function openAddModal(){document.getElementById('add-modal').classList.add('show');}
-function closeModal(id){document.getElementById(id).classList.remove('show');}
-
-async function addEmployee(){
-  const name=document.getElementById('new-name').value.trim();
-  const emp_id=document.getElementById('new-empid').value.trim();
-  const department=document.getElementById('new-dept').value.trim();
-  const title=document.getElementById('new-title').value.trim();
-  const username=document.getElementById('new-username').value.trim();
-  const password=document.getElementById('new-password').value.trim();
-  if(!name||!emp_id||!department||!title||!username||!password){alert('Please fill all fields');return;}
-
-  const{error}=await sb.from('training_employees').insert([{name,emp_id,department,title,username,password,stage:0}]);
-  if(error){alert('Error: '+error.message);return;}
-
-  closeModal('add-modal');
-  ['new-name','new-empid','new-dept','new-title','new-username','new-password'].forEach(i=>document.getElementById(i).value='');
-  await loadEmployees();
-  alert(`✓ ${name} added!\nLogin: ${username} / ${password}`);
-}
-
-async function deleteEmployee(id,name){
-  if(!confirm(`Delete ${name}? This cannot be undone.`))return;
-  const{error}=await sb.from('training_employees').delete().eq('id',id);
-  if(error){alert('Error: '+error.message);return;}
-  await loadEmployees();
 }
 
 // ── SIGN-OFF ──────────────────────────────────────────────────────
 function openSignModal(id){
   signoffTarget=id;
-  const e=allEmployees.find(x=>x.id===id);
+  const e=employees.find(x=>x.id===id);
   document.getElementById('signoff-sub').textContent=`Certifying: ${e.name}`;
   document.getElementById('signoff-modal').classList.add('show');
   setTimeout(()=>{
     const canvas=document.getElementById('sign-canvas');
     signCtx=canvas.getContext('2d');
-    signCtx.strokeStyle='#1a6bbd';signCtx.lineWidth=2;signCtx.lineCap='round';
+    signCtx.strokeStyle='#484888';signCtx.lineWidth=2;signCtx.lineCap='round';
     canvas.onmousedown=ev=>{isDrawing=true;signCtx.beginPath();signCtx.moveTo(ev.offsetX,ev.offsetY);};
     canvas.onmousemove=ev=>{if(!isDrawing)return;signCtx.lineTo(ev.offsetX,ev.offsetY);signCtx.stroke();};
-    canvas.onmouseup=()=>isDrawing=false;
-    canvas.onmouseleave=()=>isDrawing=false;
+    canvas.onmouseup=()=>isDrawing=false;canvas.onmouseleave=()=>isDrawing=false;
   },50);
 }
 function clearSig(){if(signCtx){const c=document.getElementById('sign-canvas');signCtx.clearRect(0,0,c.width,c.height);}}
-
 async function confirmSignoff(){
   const{error}=await sb.from('training_employees').update({mgr_signed:true,stage:4,mgr_signed_at:new Date().toISOString()}).eq('id',signoffTarget);
   if(error){alert('Error: '+error.message);return;}
   closeModal('signoff-modal');
   await loadEmployees();
-  const e=allEmployees.find(x=>x.id===signoffTarget);
-  alert(`✓ Sign-off confirmed!`);
+  alert('✓ Sign-off confirmed!');
   viewDetail(signoffTarget);
 }
 
 // ── TEST QUESTIONS ────────────────────────────────────────────────
 async function loadQuestions(){
-  // Populate plan select in modal
+  const{data:pd}=await sb.from('training_plans').select('id,name');
   const sel=document.getElementById('q-plan');
-  if(sel&&allPlans.length){
-    sel.innerHTML='<option value="">-- No specific plan (all employees) --</option>'+allPlans.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
-  } else if(sel) {
-    const{data:pd}=await sb.from('training_plans').select('id,name');
-    if(pd) sel.innerHTML='<option value="">-- No specific plan --</option>'+pd.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
-  }
+  if(sel&&pd) sel.innerHTML='<option value="">-- All employees --</option>'+pd.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
   const{data,error}=await sb.from('training_questions').select('*, training_plans(name)').order('created_at');
   const list=document.getElementById('questions-list');
-  if(error){
-    list.innerHTML=`<div style="text-align:center;padding:20px;color:var(--gray-400)">
-      <p>Table not found. Run this SQL in Supabase to create it:</p>
-      <pre style="background:var(--gray-50);padding:12px;border-radius:8px;font-size:11px;margin-top:10px;text-align:left">CREATE TABLE training_questions (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  question TEXT NOT NULL,
-  option_a TEXT NOT NULL,
-  option_b TEXT NOT NULL,
-  option_c TEXT NOT NULL,
-  option_d TEXT NOT NULL,
-  correct_answer TEXT NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);</pre></div>`;
-    return;
-  }
-  if(!data||data.length===0){list.innerHTML='<div class="loading">No questions yet. Add your first question!</div>';return;}
+  if(error){list.innerHTML=`<div style="text-align:center;padding:20px;color:var(--gray-400)">Error loading questions</div>`;return;}
+  if(!data||!data.length){list.innerHTML='<div class="loading">No questions yet. Add your first question!</div>';return;}
   list.innerHTML=data.map((q,i)=>`
     <div class="q-card">
-      <div style="display:flex;justify-content:space-between;align-items:start;">
+      <div style="display:flex;justify-content:space-between;align-items:start">
         <div>
           ${q.training_plans?`<span style="font-size:11px;font-weight:600;background:var(--blue-light);color:var(--blue);padding:2px 8px;border-radius:10px;margin-bottom:6px;display:inline-block">${q.training_plans.name}</span><br>`:''}
           <div class="q-text">Q${i+1}. ${q.question}</div>
         </div>
         <button class="btn btn-red btn-sm" onclick="deleteQuestion('${q.id}')">Delete</button>
       </div>
-      <div class="q-options">
-        ${['A','B','C','D'].map(opt=>`<div class="q-option"><span style="font-weight:700;color:var(--blue);min-width:20px">${opt}.</span> ${q['option_'+opt.toLowerCase()]}</div>`).join('')}
+      <div style="display:flex;flex-direction:column;gap:4px;margin-top:8px">
+        ${['A','B','C','D'].map(opt=>`<div style="font-size:12px"><strong style="color:var(--blue)">${opt}.</strong> ${q['option_'+opt.toLowerCase()]}</div>`).join('')}
       </div>
-      <div class="q-correct">✓ Correct: ${q.correct_answer}</div>
+      <div style="font-size:12px;color:var(--green);font-weight:600;margin-top:8px">✓ Correct: ${q.correct_answer}</div>
     </div>`).join('');
 }
-
 function openQModal(){document.getElementById('q-modal').classList.add('show');}
-
 async function addQuestion(){
   const question=document.getElementById('q-text').value.trim();
-  const option_a=document.getElementById('q-a').value.trim();
-  const option_b=document.getElementById('q-b').value.trim();
-  const option_c=document.getElementById('q-c').value.trim();
-  const option_d=document.getElementById('q-d').value.trim();
+  const option_a=document.getElementById('q-a').value.trim(), option_b=document.getElementById('q-b').value.trim();
+  const option_c=document.getElementById('q-c').value.trim(), option_d=document.getElementById('q-d').value.trim();
   const correct_answer=document.getElementById('q-correct').value;
-  if(!question||!option_a||!option_b||!option_c||!option_d){alert('Please fill all fields');return;}
   const plan_id=document.getElementById('q-plan').value||null;
+  if(!question||!option_a||!option_b||!option_c||!option_d){alert('Please fill all fields');return;}
   const{error}=await sb.from('training_questions').insert([{question,option_a,option_b,option_c,option_d,correct_answer,plan_id}]);
   if(error){alert('Error: '+error.message);return;}
   closeModal('q-modal');
   ['q-text','q-a','q-b','q-c','q-d'].forEach(i=>document.getElementById(i).value='');
   loadQuestions();
 }
-
 async function deleteQuestion(id){
   if(!confirm('Delete this question?'))return;
   await sb.from('training_questions').delete().eq('id',id);
   loadQuestions();
+}
+
+// ── TRAINING PLANS ────────────────────────────────────────────────
+async function loadPlans(){
+  const container=document.getElementById('plans-container');
+  container.innerHTML='<div class="loading">Loading training plans...</div>';
+  const{data,error}=await sb.from('training_plans').select('*').order('created_at');
+  if(error){container.innerHTML=`<div class="loading">Error: ${error.message}</div>`;return;}
+  plans=data||[];
+  for(const p of plans){
+    const{data:m}=await sb.from('training_plan_members').select('employee_id, training_employees(name,emp_id)').eq('plan_id',p.id);
+    p.members=m||[];
+  }
+  renderPlans();
+}
+function renderPlans(){
+  const container=document.getElementById('plans-container');
+  if(!plans.length){
+    container.innerHTML=`<div style="text-align:center;padding:48px;color:var(--gray-400)"><div style="font-size:40px;margin-bottom:10px">📋</div><div style="font-size:15px;font-weight:600;margin-bottom:8px">No training plans yet</div><button class="btn btn-primary" onclick="openNewPlanModal()">+ New Plan</button></div>`;
+    return;
+  }
+  container.innerHTML=plans.map(p=>`
+    <div class="plan-card">
+      <div class="plan-header">
+        <div><div class="plan-title">${p.name}</div>${p.description?`<div class="plan-desc">${p.description}</div>`:''}</div>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-sm" style="background:rgba(255,255,255,0.2);color:white;border:1px solid rgba(255,255,255,0.3)" onclick="addPhase('${p.id}')">+ Phase</button>
+          <button class="btn btn-sm" style="background:rgba(234,67,93,0.8);color:white;" onclick="deletePlan('${p.id}','${p.name}')">Delete</button>
+        </div>
+      </div>
+      <div class="members-bar">
+        <span style="font-size:11px;font-weight:700;color:var(--blue);margin-right:4px">👥 Members:</span>
+        ${p.members&&p.members.length?p.members.map(m=>`<span class="member-chip">${m.training_employees.name}<span style="cursor:pointer;opacity:0.7;margin-left:4px" onclick="removeMember('${p.id}','${m.employee_id}')">✕</span></span>`).join(''):'<span style="font-size:12px;color:var(--gray-400)">No members yet</span>'}
+        <button style="font-size:11px;font-weight:600;color:var(--blue);cursor:pointer;padding:3px 10px;border-radius:20px;border:1.5px dashed var(--blue-mid);background:white;margin-left:4px" onclick="openMembersModal('${p.id}','${p.name}')">+ Add</button>
+      </div>
+      ${(p.phases||[]).map((ph,pi)=>`
+        <div class="phase-block">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+            <div style="display:flex;align-items:center;gap:8px">
+              <span class="phase-badge">Phase ${pi+1}</span>
+              <span style="font-size:14px;font-weight:600">${ph.name}</span>
+              <span style="font-size:12px;color:var(--gray-400)">${ph.period||''}</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px">
+              ${ph.weeks&&ph.weeks.length?`<span style="font-size:12px;font-weight:600;color:var(--blue)">${ph.weeks.reduce((s,w)=>s+(w.score||0),0)}/${ph.weeks.length*3}</span>`:''}
+              <button class="btn btn-sm btn-outline" onclick="openWeekModal('${p.id}',${pi})">+ Week</button>
+              <button class="btn btn-xs btn-red" onclick="removePhase('${p.id}',${pi})">✕</button>
+            </div>
+          </div>
+          ${ph.weeks&&ph.weeks.length?`
+          <table class="weeks-table">
+            <thead><tr><th style="width:70px">Week</th><th>Deliverable</th><th>KPIs</th><th style="width:90px">Score</th><th style="width:40px"></th></tr></thead>
+            <tbody>
+              ${ph.weeks.map((w,wi)=>`<tr>
+                <td style="font-weight:700;color:var(--blue)">Week ${w.num||wi+1}</td>
+                <td style="font-weight:600">${w.title}</td>
+                <td style="font-size:12px;color:var(--gray-400)">${w.kpis||'—'}</td>
+                <td><select onchange="updateScore('${p.id}',${pi},${wi},this.value)" style="border:1px solid var(--gray-200);border-radius:6px;padding:3px 6px;font-size:12px;font-family:'DM Sans',sans-serif">
+                  <option value="" ${w.score===null||w.score===undefined?'selected':''}>—</option>
+                  <option value="0" ${w.score===0?'selected':''}>0 — Missed</option>
+                  <option value="1" ${w.score===1?'selected':''}>1 — Partial</option>
+                  <option value="2" ${w.score===2?'selected':''}>2 — Met</option>
+                  <option value="3" ${w.score===3?'selected':''}>3 — Exceeded</option>
+                </select></td>
+                <td><button class="btn btn-xs btn-red" onclick="removeWeek('${p.id}',${pi},${wi})">✕</button></td>
+              </tr>`).join('')}
+            </tbody>
+          </table>`:'<div style="text-align:center;padding:10px;color:var(--gray-400);font-size:12px">No weeks yet</div>'}
+        </div>`).join('')}
+      ${!(p.phases&&p.phases.length)?'<div style="text-align:center;padding:20px;color:var(--gray-400);font-size:13px">No phases yet — click "+ Phase" to add</div>':''}
+    </div>`).join('');
+}
+
+// Plan actions
+function openNewPlanModal(){buildPhaseInputs();document.getElementById('plan-modal').classList.add('show');}
+function buildPhaseInputs(){
+  const n=parseInt(document.getElementById('plan-phases').value);
+  document.getElementById('phase-inputs').innerHTML=Array.from({length:n},(_,i)=>`
+    <div style="background:var(--gray-50);border-radius:8px;padding:12px;margin-bottom:10px">
+      <div style="font-size:12px;font-weight:700;color:var(--blue);margin-bottom:8px">Phase ${i+1}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div class="form-group" style="margin-bottom:0"><label class="form-label">Name</label><input class="form-input" id="ph-name-${i}" placeholder="e.g. Foundation"></div>
+        <div class="form-group" style="margin-bottom:0"><label class="form-label">Period</label><input class="form-input" id="ph-period-${i}" placeholder="e.g. Month 1 (W1–W4)"></div>
+      </div>
+    </div>`).join('');
+}
+async function createPlan(){
+  const name=document.getElementById('plan-name').value.trim(), description=document.getElementById('plan-desc').value.trim();
+  if(!name){alert('Please enter a plan name');return;}
+  const n=parseInt(document.getElementById('plan-phases').value);
+  const phases=Array.from({length:n},(_,i)=>({name:document.getElementById(`ph-name-${i}`)?.value.trim()||`Phase ${i+1}`,period:document.getElementById(`ph-period-${i}`)?.value.trim()||'',weeks:[]}));
+  const{error}=await sb.from('training_plans').insert([{name,description,phases}]);
+  if(error){alert('Error: '+error.message);return;}
+  closeModal('plan-modal');
+  document.getElementById('plan-name').value='';document.getElementById('plan-desc').value='';
+  await loadPlans();
+}
+async function deletePlan(id,name){
+  if(!confirm(`Delete plan "${name}"?`))return;
+  await sb.from('training_plans').delete().eq('id',id);
+  await loadPlans();
+}
+async function addPhase(planId){
+  const plan=plans.find(p=>p.id===planId);
+  const phases=JSON.parse(JSON.stringify(plan.phases||[]));
+  const n=phases.length+1;
+  const name=prompt(`Phase ${n} name:`,`Phase ${n}`)||`Phase ${n}`;
+  const period=prompt('Period (e.g. Month 2 (W5–W8)):')||'';
+  phases.push({name,period,weeks:[]});
+  await sb.from('training_plans').update({phases}).eq('id',planId);
+  await loadPlans();
+}
+async function removePhase(planId,pi){
+  if(!confirm('Remove this phase?'))return;
+  const plan=plans.find(p=>p.id===planId);
+  const phases=JSON.parse(JSON.stringify(plan.phases||[]));
+  phases.splice(pi,1);
+  await sb.from('training_plans').update({phases}).eq('id',planId);
+  await loadPlans();
+}
+function openWeekModal(planId,pi){
+  weekTarget={planId,pi};
+  document.getElementById('week-modal-title').textContent=`Add Week to Phase ${pi+1}`;
+  document.getElementById('wk-title').value='';document.getElementById('wk-kpis').value='';
+  document.getElementById('week-modal').classList.add('show');
+}
+async function saveWeek(){
+  if(!weekTarget)return;
+  const title=document.getElementById('wk-title').value.trim(), kpis=document.getElementById('wk-kpis').value.trim();
+  if(!title){alert('Please enter a week title');return;}
+  const plan=plans.find(p=>p.id===weekTarget.planId);
+  const phases=JSON.parse(JSON.stringify(plan.phases||[]));
+  const ph=phases[weekTarget.pi];
+  if(!ph.weeks)ph.weeks=[];
+  ph.weeks.push({num:ph.weeks.length+1,title,kpis,score:null});
+  await sb.from('training_plans').update({phases}).eq('id',weekTarget.planId);
+  closeModal('week-modal');
+  await loadPlans();
+}
+async function removeWeek(planId,pi,wi){
+  const plan=plans.find(p=>p.id===planId);
+  const phases=JSON.parse(JSON.stringify(plan.phases||[]));
+  phases[pi].weeks.splice(wi,1);
+  phases[pi].weeks.forEach((w,i)=>w.num=i+1);
+  await sb.from('training_plans').update({phases}).eq('id',planId);
+  await loadPlans();
+}
+async function updateScore(planId,pi,wi,val){
+  const plan=plans.find(p=>p.id===planId);
+  const phases=JSON.parse(JSON.stringify(plan.phases||[]));
+  phases[pi].weeks[wi].score=val===''?null:parseInt(val);
+  await sb.from('training_plans').update({phases}).eq('id',planId);
+  plan.phases=phases;
+}
+async function openMembersModal(planId,planName){
+  currentPlanId=planId;
+  document.getElementById('members-modal-title').textContent=`Members — ${planName}`;
+  const plan=plans.find(p=>p.id===planId);
+  const existingIds=(plan.members||[]).map(m=>m.employee_id);
+  const list=document.getElementById('members-list');
+  list.innerHTML=plan.members&&plan.members.length
+    ?plan.members.map(m=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-bottom:1px solid var(--gray-100)"><div><strong style="font-size:13px">${m.training_employees.name}</strong><span style="font-size:11px;color:var(--gray-400);margin-left:8px">${m.training_employees.emp_id}</span></div><button class="btn btn-red btn-sm" onclick="removeMember('${planId}','${m.employee_id}')">Remove</button></div>`).join('')
+    :'<div style="text-align:center;padding:16px;color:var(--gray-400);font-size:13px">No members yet</div>';
+  const available=employees.filter(e=>!existingIds.includes(e.id));
+  const sel=document.getElementById('member-select');
+  sel.innerHTML=available.length?available.map(e=>`<option value="${e.id}">${e.name} (${e.emp_id})</option>`).join(''):'<option>All employees already added</option>';
+  document.getElementById('members-modal').classList.add('show');
+}
+async function addMember(){
+  const empId=document.getElementById('member-select').value;
+  if(!empId||!currentPlanId)return;
+  const{error}=await sb.from('training_plan_members').insert([{plan_id:currentPlanId,employee_id:empId}]);
+  if(error){alert('Error: '+error.message);return;}
+  closeModal('members-modal');
+  await loadPlans();
+}
+async function removeMember(planId,empId){
+  await sb.from('training_plan_members').delete().eq('plan_id',planId).eq('employee_id',empId);
+  await loadPlans();
 }
 
 // ── NAV ───────────────────────────────────────────────────────────
@@ -1048,190 +805,22 @@ function showPage(name){
   document.getElementById('page-title').textContent={dashboard:'Dashboard',employees:'Employees',questions:'Test Questions',plans:'Training Plans',detail:'Employee Detail'}[name]||name;
   if(name==='dashboard'||name==='employees')loadEmployees();
   if(name==='questions')loadQuestions();
-  if(name==='plans')loadAll();
+  if(name==='plans')loadPlans();
 }
+function closeModal(id){document.getElementById(id).classList.remove('show');}
+function openAddModal(){document.getElementById('add-modal').classList.add('show');}
+function filterTable(v){searchVal=v;renderEmployees();}
+function filterStatus(f,el){currentFilter=f;document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));el.classList.add('active');renderEmployees();}
 
-function filterTable(v){searchVal=v;renderAll();}
-function filterStatus(f,el){currentFilter=f;document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));el.classList.add('active');renderAll();}
-
-if(sessionStorage.getItem('admin_logged_in')==='true'){
-  // ── LOAD ──────────────────────────────────────────────────────────
-
-// ── RENDER ────────────────────────────────────────────────────────
-
-
-
-// ── CREATE PLAN ───────────────────────────────────────────────────
-
-// ── PHASES ────────────────────────────────────────────────────────
-
-
-// ── WEEKS ─────────────────────────────────────────────────────────
-
-
-
-
-
-// ── DELETE PLAN ───────────────────────────────────────────────────
-
-// ── MEMBERS ───────────────────────────────────────────────────────
-
-
-
-
-// ── UTILS ─────────────────────────────────────────────────────────
-
-function closeModal(id) { document.getElementById(id).classList.remove('show'); }
-
-document.getElementById('login-screen').style.display='none';
+// INIT
+if(sessionStorage.getItem('admin_auth')==='1'){
+  document.getElementById('login-screen').style.display='none';
   document.getElementById('app').style.display='flex';
   loadEmployees();
 } else {
-  // ── LOAD ──────────────────────────────────────────────────────────
-
-// ── RENDER ────────────────────────────────────────────────────────
-
-
-
-// ── CREATE PLAN ───────────────────────────────────────────────────
-
-// ── PHASES ────────────────────────────────────────────────────────
-
-
-// ── WEEKS ─────────────────────────────────────────────────────────
-
-
-
-
-
-// ── DELETE PLAN ───────────────────────────────────────────────────
-
-// ── MEMBERS ───────────────────────────────────────────────────────
-
-
-
-
-// ── UTILS ─────────────────────────────────────────────────────────
-
-function closeModal(id) { document.getElementById(id).classList.remove('show'); }
-
-document.getElementById('login-screen').style.display='flex';
+  document.getElementById('login-screen').style.display='flex';
   document.getElementById('app').style.display='none';
 }
 </script>
-<script>
-// ── TRAINING PLANS ────────────────────────────────────────────────
-let currentPlanId = null;
-
-async function loadPlans() {
-  const { data, error } = await sb.from('training_plans').select('*').order('created_at');
-  const list = document.getElementById('plans-list');
-  if (error || !data || data.length === 0) {
-    list.innerHTML = '<div class="loading">No training plans yet. Add your first plan!</div>';
-    return;
-  }
-  list.innerHTML = data.map(p => `
-    <div style="background:white;border:1px solid var(--gray-200);border-radius:12px;padding:18px 20px;margin-bottom:12px;box-shadow:var(--shadow);">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-        <div>
-          <div style="font-size:15px;font-weight:700;">${p.name}</div>
-          ${p.description ? `<div style="font-size:12px;color:var(--gray-400);margin-top:3px">${p.description}</div>` : ''}
-        </div>
-        <div style="display:flex;gap:8px;">
-          <button class="btn btn-primary btn-sm" onclick="openMembersModal('${p.id}','${p.name}')">👥 Members</button>
-          <button class="btn btn-red btn-sm" onclick="deletePlan('${p.id}','${p.name}')">Delete</button>
-        </div>
-      </div>
-      <div id="plan-members-${p.id}" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;"></div>
-    </div>`).join('');
-  // Load members for each plan
-  for (const p of data) await loadPlanMembersInline(p.id);
-}
-
-async function loadPlanMembersInline(planId) {
-  const { data } = await sb.from('training_plan_members')
-    .select('employee_id, training_employees(name, emp_id)')
-    .eq('plan_id', planId);
-  const container = document.getElementById(`plan-members-${planId}`);
-  if (!container) return;
-  if (!data || data.length === 0) {
-    container.innerHTML = '<span style="font-size:12px;color:var(--gray-400)">No members yet</span>';
-    return;
-  }
-  container.innerHTML = data.map(m => `
-    <span style="background:var(--blue-light);color:var(--blue);font-size:12px;font-weight:600;padding:4px 10px;border-radius:20px;display:inline-flex;align-items:center;gap:6px;">
-      ${m.training_employees.name}
-      <span style="cursor:pointer;opacity:0.6;" onclick="removeMember('${planId}','${m.employee_id}')">✕</span>
-    </span>`).join('');
-}
-
-function openPlanModal() { document.getElementById('plan-modal').classList.add('show'); }
-
-async function addPlan() {
-  const name = document.getElementById('plan-name').value.trim();
-  const description = document.getElementById('plan-desc').value.trim();
-  if (!name) { alert('Please enter a plan name'); return; }
-  const { error } = await sb.from('training_plans').insert([{ name, description }]);
-  if (error) { alert('Error: ' + error.message); return; }
-  closeModal('plan-modal');
-  document.getElementById('plan-name').value = '';
-  document.getElementById('plan-desc').value = '';
-  loadPlans();
-}
-
-
-async function openMembersModal(planId, planName) {
-  currentPlanId = planId;
-  document.getElementById('members-modal-title').textContent = `Members — ${planName}`;
-
-  // Load current members
-  const { data: members } = await sb.from('training_plan_members')
-    .select('employee_id, training_employees(name, emp_id)')
-    .eq('plan_id', planId);
-
-  const memberIds = (members || []).map(m => m.employee_id);
-  const list = document.getElementById('members-list');
-  if (!members || members.length === 0) {
-    list.innerHTML = '<div style="text-align:center;padding:16px;color:var(--gray-400);font-size:13px">No members yet</div>';
-  } else {
-    list.innerHTML = members.map(m => `
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border-bottom:1px solid var(--gray-100);">
-        <div>
-          <span style="font-size:13px;font-weight:600">${m.training_employees.name}</span>
-          <span style="font-size:11px;color:var(--gray-400);margin-left:8px">${m.training_employees.emp_id}</span>
-        </div>
-        <button class="btn btn-red btn-sm" onclick="removeMember('${planId}','${m.employee_id}')">Remove</button>
-      </div>`).join('');
-  }
-
-  // Populate select with employees not already in plan
-  const sel = document.getElementById('member-select');
-  const available = allEmployees.filter(e => !memberIds.includes(e.id));
-  if (available.length === 0) {
-    sel.innerHTML = '<option>All employees already added</option>';
-  } else {
-    sel.innerHTML = available.map(e => `<option value="${e.id}">${e.name} (${e.emp_id})</option>`).join('');
-  }
-
-  document.getElementById('members-modal').classList.add('show');
-}
-
-async function addMember() {
-  const empId = document.getElementById('member-select').value;
-  if (!empId || !currentPlanId) return;
-  const { error } = await sb.from('training_plan_members').insert([{ plan_id: currentPlanId, employee_id: empId }]);
-  if (error) { alert('Error: ' + error.message); return; }
-  await openMembersModal(currentPlanId, document.getElementById('members-modal-title').textContent.replace('Members — ', ''));
-  loadPlans();
-}
-
-async function removeMember(planId, empId) {
-  await sb.from('training_plan_members').delete().eq('plan_id', planId).eq('employee_id', empId);
-  await openMembersModal(planId, document.getElementById('members-modal-title').textContent.replace('Members — ', ''));
-  loadPlans();
-}
-</script>
-
-
 </body>
 </html>

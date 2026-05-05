@@ -1159,7 +1159,12 @@ async function saveMatrixEmployees() {
   toast('✓ Employees updated!');
 }
 
-else {
+// INIT
+if(sessionStorage.getItem('admin_auth')==='1'){
+  document.getElementById('login-screen').style.display='none';
+  document.getElementById('app').style.display='flex';
+  loadEmployees();
+} else {
   document.getElementById('login-screen').style.display='flex';
   document.getElementById('app').style.display='none';
 }

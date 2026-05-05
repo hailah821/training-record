@@ -1141,8 +1141,6 @@ async function saveMatrixPlan() {
   document.querySelectorAll('[id^="mx-task-val-"]').forEach(inp => {
     if (inp.value.trim()) tasks.push(inp.value.trim());
   });
-  if (!tasks.length) { toast('⚠️ Please add at least one task', 'red'); return; }
-
   const selectedEmps = [...document.querySelectorAll('#mx-emp-list input:checked')].map(cb => cb.value);
 
   // Build phases from tasks

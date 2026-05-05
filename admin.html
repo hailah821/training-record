@@ -191,6 +191,19 @@ body{font-family:'DM Sans',sans-serif;background:var(--gray-50);color:var(--gray
 .toast{position:fixed;bottom:24px;right:24px;background:var(--gray-800);color:white;font-size:13px;font-weight:600;padding:12px 18px;border-radius:10px;box-shadow:var(--shadow-md);z-index:999;animation:slideUp 0.2s ease;display:flex;align-items:center;gap:8px;}
 .toast.green{background:var(--green);}
 .toast.red{background:var(--red);}
+
+/* MATRIX */
+.matrix-table{width:100%;border-collapse:collapse;font-size:12px;overflow-x:auto;display:block;}
+.matrix-table th{background:var(--blue);color:white;padding:8px 12px;font-size:11px;font-weight:600;white-space:nowrap;border:1px solid rgba(255,255,255,0.2);}
+.matrix-table th.emp-col{background:var(--gray-800);min-width:150px;text-align:left;}
+.matrix-table td{padding:8px 12px;border:1px solid var(--gray-200);text-align:center;vertical-align:middle;}
+.matrix-table td.emp-name{text-align:left;font-weight:600;background:var(--gray-50);white-space:nowrap;}
+.matrix-check{font-size:18px;}
+.matrix-check.done{color:var(--green);}
+.matrix-check.pending{color:var(--gray-300);}
+.mx-plan-header{background:var(--blue);color:white;padding:14px 20px;border-radius:12px 12px 0 0;display:flex;align-items:center;justify-content:space-between;}
+.mx-plan-card{border:1px solid var(--gray-200);border-radius:12px;overflow:hidden;margin-bottom:20px;box-shadow:var(--shadow);}
+
 </style>
 </head>
 <body>
@@ -214,8 +227,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--gray-50);color:var(--gray
       <div class="nav-label">Admin</div>
       <div class="nav-item active" onclick="showPage('dashboard')" id="nav-dashboard"><span>📊</span> Dashboard <span class="nav-badge" id="pending-badge"></span></div>
       <div class="nav-item" onclick="showPage('employees')" id="nav-employees"><span>👥</span> Employees</div>
-      <div class="nav-item" onclick="showPage('questions')" id="nav-questions"><span>📝</span> Test Questions</div>
-      <div class="nav-item" onclick="showPage('plans')" id="nav-plans"><span>📋</span> Training Plans</div>
+      <div class="nav-item" onclick="showPage('matrix')" id="nav-matrix"><span>📊</span> Training Matrix</div>
     </nav>
     <div class="sidebar-footer">
       <div class="sidebar-avatar">A</div>
@@ -269,30 +281,19 @@ body{font-family:'DM Sans',sans-serif;background:var(--gray-50);color:var(--gray
       </div>
     </div>
 
-    <!-- TEST QUESTIONS -->
-    <div class="page" id="page-questions">
-      <div class="card">
-        <div class="section-header">
-          <div class="section-title">Test Questions</div>
-          <button class="btn btn-primary btn-sm" onclick="openQModal()">+ Add Question</button>
-        </div>
-        <div id="questions-list"><div class="loading">Loading...</div></div>
-      </div>
-    </div>
 
-    <!-- TRAINING PLANS -->
-    <div class="page" id="page-plans">
-      <div class="scoring-guide">
-        <div class="scoring-guide-title">Weekly Deliverable Scoring Guide</div>
-        <div class="scoring-guide-items">
-          <div style="display:flex;align-items:center;gap:6px;font-size:12px;"><span class="score-badge score-3b">3</span> Exceeded</div>
-          <div style="display:flex;align-items:center;gap:6px;font-size:12px;"><span class="score-badge score-2b">2</span> Met</div>
-          <div style="display:flex;align-items:center;gap:6px;font-size:12px;"><span class="score-badge score-1b">1</span> Partial</div>
-          <div style="display:flex;align-items:center;gap:6px;font-size:12px;"><span class="score-badge score-0b">0</span> Missed</div>
-          <button class="btn btn-primary btn-sm" style="margin-left:auto" onclick="openNewPlanModal()">+ New Plan</button>
+
+
+
+    <!-- TRAINING MATRIX -->
+    <div class="page" id="page-matrix">
+      <div class="card" style="margin-bottom:20px">
+        <div class="section-header">
+          <div class="section-title">Training Matrix</div>
+          <button class="btn btn-primary btn-sm" onclick="openNewMatrixModal()">+ New Training Plan</button>
         </div>
+        <div id="matrix-plans-list"><div class="loading">Loading...</div></div>
       </div>
-      <div id="plans-container"><div class="loading">Loading training plans...</div></div>
     </div>
 
     <!-- DETAIL -->
@@ -986,10 +987,9 @@ function showPage(name){
   document.getElementById('page-'+name).classList.add('active');
   const nav=document.getElementById('nav-'+name);
   if(nav)nav.classList.add('active');
-  document.getElementById('page-title').textContent={dashboard:'Dashboard',employees:'Employees',questions:'Test Questions',plans:'Training Plans',detail:'Employee Detail'}[name]||name;
+  document.getElementById('page-title').textContent={dashboard:'Dashboard',employees:'Employees',matrix:'Training Matrix',detail:'Employee Detail'}[name]||name;
   if(name==='dashboard'||name==='employees')loadEmployees();
-  if(name==='questions')loadQuestions();
-  if(name==='plans')loadPlans();
+  if(name==='matrix')loadMatrix();
 }
 function closeModal(id){document.getElementById(id).classList.remove('show');}
 function openAddModal(){document.getElementById('add-modal').classList.add('show');}
@@ -1005,6 +1005,192 @@ function toast(msg, type='green'){
   setTimeout(()=>t.remove(), 3000);
 }
 
+
+// ── TRAINING MATRIX ──────────────────────────────────────────────
+let matrixTaskCount = 0;
+
+async function loadMatrix() {
+  const container = document.getElementById('matrix-plans-list');
+  container.innerHTML = '<div class="loading">Loading...</div>';
+
+  const { data: mxPlans, error } = await sb.from('training_plans')
+    .select('*').order('created_at');
+
+  if (error || !mxPlans || !mxPlans.length) {
+    container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--gray-400)"><div style="font-size:36px;margin-bottom:10px">📊</div><div style="font-size:15px;font-weight:600;margin-bottom:8px">No training plans yet</div><button class="btn btn-primary" onclick="openNewMatrixModal()">+ New Training Plan</button></div>';
+    return;
+  }
+
+  // Load members for each plan
+  for (const p of mxPlans) {
+    const { data: members } = await sb.from('training_plan_members')
+      .select('employee_id, training_employees(id,name,emp_id,mgr_signed,trainee_signed)')
+      .eq('plan_id', p.id);
+    p.members = members || [];
+  }
+
+  container.innerHTML = mxPlans.map(p => renderMatrixCard(p)).join('');
+}
+
+function renderMatrixCard(p) {
+  const phases = p.phases || [];
+  // Collect all weeks across all phases
+  const allTasks = [];
+  phases.forEach((ph, pi) => {
+    (ph.weeks || []).forEach((w, wi) => {
+      allTasks.push({ label: `W${w.num||wi+1}: ${w.title}`, phase: ph.name });
+    });
+  });
+
+  if (!allTasks.length) {
+    return `<div class="mx-plan-card">
+      <div class="mx-plan-header">
+        <div>
+          <div style="font-size:15px;font-weight:700">${p.name}</div>
+          ${p.description ? `<div style="font-size:12px;opacity:0.8;margin-top:2px">${p.description}</div>` : ''}
+        </div>
+        <button class="btn btn-sm" style="background:rgba(234,67,93,0.8);color:white;" onclick="deletePlan('${p.id}','${p.name}')">Delete</button>
+      </div>
+      <div style="padding:20px;text-align:center;color:var(--gray-400);font-size:13px">No tasks/weeks added yet</div>
+    </div>`;
+  }
+
+  const members = p.members || [];
+
+  const headerCols = allTasks.map(t =>
+    `<th title="${t.label}">${t.label.length > 20 ? t.label.substring(0,18)+'...' : t.label}</th>`
+  ).join('');
+
+  const rows = members.map(m => {
+    const emp = m.training_employees;
+    const certified = emp.mgr_signed && emp.trainee_signed;
+    const cols = allTasks.map(() =>
+      `<td class="matrix-check ${certified ? 'done' : 'pending'}">${certified ? '✓' : '—'}</td>`
+    ).join('');
+    return `<tr>
+      <td class="emp-name">
+        ${emp.name}
+        <div style="font-size:10px;color:var(--gray-400)">${emp.emp_id}</div>
+      </td>
+      ${cols}
+    </tr>`;
+  }).join('');
+
+  const emptyRows = !members.length
+    ? `<tr><td colspan="${allTasks.length + 1}" style="text-align:center;padding:20px;color:var(--gray-400)">No employees assigned yet</td></tr>`
+    : '';
+
+  return `<div class="mx-plan-card">
+    <div class="mx-plan-header">
+      <div>
+        <div style="font-size:15px;font-weight:700">${p.name}</div>
+        ${p.description ? `<div style="font-size:12px;opacity:0.8;margin-top:2px">${p.description}</div>` : ''}
+        <div style="font-size:11px;opacity:0.7;margin-top:3px">${members.length} employees · ${allTasks.length} tasks</div>
+      </div>
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-sm" style="background:rgba(255,255,255,0.2);color:white;border:1px solid rgba(255,255,255,0.3)" onclick="openManagePlanMembers('${p.id}','${p.name}')">👥 Manage</button>
+        <button class="btn btn-sm" style="background:rgba(234,67,93,0.8);color:white;" onclick="deletePlan('${p.id}','${p.name}')">Delete</button>
+      </div>
+    </div>
+    <div style="overflow-x:auto;">
+      <table class="matrix-table">
+        <thead><tr>
+          <th class="emp-col">Employee</th>
+          ${headerCols}
+        </tr></thead>
+        <tbody>${rows}${emptyRows}</tbody>
+      </table>
+    </div>
+  </div>`;
+}
+
+function openNewMatrixModal() {
+  matrixTaskCount = 0;
+  document.getElementById('mx-name').value = '';
+  document.getElementById('mx-tasks').innerHTML = '';
+  // Populate employees
+  const empList = document.getElementById('mx-emp-list');
+  empList.innerHTML = employees.length
+    ? employees.map(e => `<label style="display:flex;align-items:center;gap:8px;padding:6px;cursor:pointer;border-radius:6px;font-size:13px" onmouseover="this.style.background='var(--gray-50)'" onmouseout="this.style.background=''">
+        <input type="checkbox" value="${e.id}" style="accent-color:var(--blue)">
+        <span><strong>${e.name}</strong> <span style="color:var(--gray-400);font-size:11px">${e.emp_id} · ${e.department}</span></span>
+      </label>`).join('')
+    : '<div style="color:var(--gray-400);font-size:13px;padding:8px">No employees yet. Add employees first.</div>';
+  addMatrixTask();
+  document.getElementById('matrix-modal').classList.add('show');
+}
+
+function addMatrixTask() {
+  matrixTaskCount++;
+  const i = matrixTaskCount;
+  const div = document.createElement('div');
+  div.id = `mx-task-${i}`;
+  div.style.cssText = 'display:flex;gap:8px;margin-bottom:8px;align-items:center;';
+  div.innerHTML = `
+    <input class="form-input" id="mx-task-val-${i}" placeholder="Task / Week name" style="flex:1">
+    <button class="btn btn-xs btn-red" onclick="document.getElementById('mx-task-${i}').remove()">✕</button>`;
+  document.getElementById('mx-tasks').appendChild(div);
+}
+
+async function saveMatrixPlan() {
+  const name = document.getElementById('mx-name').value.trim();
+  if (!name) { toast('⚠️ Please enter a plan name', 'red'); return; }
+
+  const tasks = [];
+  document.querySelectorAll('[id^="mx-task-val-"]').forEach(inp => {
+    if (inp.value.trim()) tasks.push(inp.value.trim());
+  });
+  if (!tasks.length) { toast('⚠️ Please add at least one task', 'red'); return; }
+
+  const selectedEmps = [...document.querySelectorAll('#mx-emp-list input:checked')].map(cb => cb.value);
+
+  // Build phases from tasks
+  const phases = [{ name: 'Tasks', period: '', weeks: tasks.map((t, i) => ({ num: i+1, title: t, kpis: '', score: null })) }];
+
+  const { data: planData, error } = await sb.from('training_plans')
+    .insert([{ name, phases, test_questions_count: 10, test_pass_score: 8 }])
+    .select().single();
+
+  if (error) { toast('❌ Error: ' + error.message, 'red'); return; }
+
+  // Add members
+  if (selectedEmps.length) {
+    await sb.from('training_plan_members').insert(
+      selectedEmps.map(eid => ({ plan_id: planData.id, employee_id: eid }))
+    );
+  }
+
+  closeModal('matrix-modal');
+  toast('✓ Training plan created!');
+  loadMatrix();
+}
+
+async function openManagePlanMembers(planId, planName) {
+  currentPlanId = planId;
+  document.getElementById('members-modal-title').textContent = `Members — ${planName}`;
+  const plan = plans.find(p => p.id === planId);
+  const { data: members } = await sb.from('training_plan_members')
+    .select('employee_id, training_employees(name,emp_id)')
+    .eq('plan_id', planId);
+  const existingIds = (members || []).map(m => m.employee_id);
+  const list = document.getElementById('members-list');
+  list.innerHTML = members && members.length
+    ? members.map(m => `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-bottom:1px solid var(--gray-100)"><div><strong style="font-size:13px">${m.training_employees.name}</strong><span style="font-size:11px;color:var(--gray-400);margin-left:8px">${m.training_employees.emp_id}</span></div><button class="btn btn-red btn-sm" onclick="removeMemberAndRefresh('${planId}','${m.employee_id}')">Remove</button></div>`).join('')
+    : '<div style="text-align:center;padding:16px;color:var(--gray-400);font-size:13px">No members yet</div>';
+  const available = employees.filter(e => !existingIds.includes(e.id));
+  const sel = document.getElementById('member-select');
+  sel.innerHTML = available.length
+    ? available.map(e => `<option value="${e.id}">${e.name} (${e.emp_id})</option>`).join('')
+    : '<option>All employees already added</option>';
+  document.getElementById('members-modal').classList.add('show');
+}
+
+async function removeMemberAndRefresh(planId, empId) {
+  await sb.from('training_plan_members').delete().eq('plan_id', planId).eq('employee_id', empId);
+  await openManagePlanMembers(planId, document.getElementById('members-modal-title').textContent.replace('Members — ', ''));
+  loadMatrix();
+}
+
 // INIT
 if(sessionStorage.getItem('admin_auth')==='1'){
   document.getElementById('login-screen').style.display='none';
@@ -1015,5 +1201,31 @@ if(sessionStorage.getItem('admin_auth')==='1'){
   document.getElementById('app').style.display='none';
 }
 </script>
+
+<!-- NEW MATRIX TRAINING PLAN MODAL -->
+<div class="modal-overlay" id="matrix-modal">
+  <div class="modal" style="width:540px">
+    <div class="modal-title">New Training Plan</div>
+    <div class="modal-sub">Create a training plan and assign employees</div>
+    <div class="form-group">
+      <label class="form-label">Training Plan Name</label>
+      <input class="form-input" id="mx-name" placeholder="e.g. Ygii Tech Training — 3 Month">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Select Employees</label>
+      <div id="mx-emp-list" style="max-height:200px;overflow-y:auto;border:1.5px solid var(--gray-200);border-radius:8px;padding:8px;"></div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Tasks / Weeks</label>
+      <div id="mx-tasks" style="margin-bottom:8px;"></div>
+      <button class="btn btn-outline btn-sm" onclick="addMatrixTask()">+ Add Task</button>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal('matrix-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveMatrixPlan()">Create Plan</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>

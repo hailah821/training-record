@@ -620,21 +620,7 @@ async function viewDetail(id){
     <div class="detail-grid">
       <div class="detail-card"><div class="detail-card-header"><div class="detail-card-title"><div class="dot dot-blue"></div>Order 2</div>${e.order2_done?'<span class="badge green">Confirmed</span>':'<span class="badge gray">Pending</span>'}</div>${orderHTML(e.order2_done,2,e.order2_date,e.order2_task)}</div>
       <div class="detail-card"><div class="detail-card-header"><div class="detail-card-title"><div class="dot dot-green"></div>Sign-off</div></div>
-        ${e.test_pending_review && e.test_answers && Object.keys(e.test_answers).length ? `
-        <div class="field-row" style="flex-direction:column;align-items:start;gap:8px;">
-          <span class="field-key" style="color:var(--orange);font-weight:700">⚠️ Open Answers Pending Review</span>
-          ${Object.entries(e.test_answers).map(([idx,a])=>!a.reviewed?`
-            <div style="background:var(--orange-light);border-radius:8px;padding:12px;width:100%">
-              <div style="font-size:12px;font-weight:600;margin-bottom:4px">${a.question}</div>
-              <div style="font-size:13px;margin-bottom:8px;color:var(--gray-800)">${a.answer||'(no answer)'}</div>
-              <div style="display:flex;gap:8px">
-                <button class="btn btn-green btn-sm" onclick="reviewAnswer('${e.id}',${idx},true)">✓ Correct</button>
-                <button class="btn btn-red btn-sm" onclick="reviewAnswer('${e.id}',${idx},false)">✗ Wrong</button>
-              </div>
-            </div>`:''
-          ).join('')}
-        </div>`:''
-        }
+        ${buildReviewSection(e)}
         <div class="field-row"><span class="field-key">Manager Sign-off</span><span class="field-val">${e.mgr_signed?        <div class="field-row"><span class="field-key">Manager Sign-off</span><span class="field-val">${e.mgr_signed?`<span class="signed-stamp">✓ Signed</span>`:(e.stage>=3?`<button class="btn btn-green btn-sm" onclick="openSignModal('${e.id}')">Sign as Manager</button>`:'<span style="font-size:12px;color:var(--gray-400)">Awaiting stages</span>')}</span></div>
         <div class="field-row"><span class="field-key">Trainee Sign-off</span><span class="field-val">${e.trainee_signed?`<span class="signed-stamp">✓ Signed</span>`:'<span style="font-size:12px;color:var(--gray-400)">Pending</span>'}</span></div>
       </div>
@@ -1536,6 +1522,24 @@ async function reviewAnswer(empId, qIdx, isCorrect) {
   toast('✓ Answer reviewed!');
   await loadEmployees();
   viewDetail(empId);
+}
+
+
+function buildReviewSection(e) {
+  if (!e.test_pending_review || !e.test_answers || !Object.keys(e.test_answers).length) return '';
+  const items = Object.entries(e.test_answers).filter(([idx,a]) => !a.reviewed).map(([idx,a]) =>
+    '<div style="background:var(--orange-light);border-radius:8px;padding:12px;width:100%;margin-top:8px">' +
+    '<div style="font-size:12px;font-weight:600;margin-bottom:4px">' + a.question + '</div>' +
+    '<div style="font-size:13px;margin-bottom:8px;color:var(--gray-800)">' + (a.answer||'(no answer)') + '</div>' +
+    '<div style="display:flex;gap:8px">' +
+    '<button class="btn btn-green btn-sm" onclick="reviewAnswer('' + e.id + '',' + idx + ',true)">✓ Correct</button>' +
+    '<button class="btn btn-red btn-sm" onclick="reviewAnswer('' + e.id + '',' + idx + ',false)">✗ Wrong</button>' +
+    '</div></div>'
+  ).join('');
+  if (!items) return '';
+  return '<div class="field-row" style="flex-direction:column;align-items:start;gap:8px;">' +
+    '<span class="field-key" style="color:var(--orange);font-weight:700">⚠️ Open Answers Pending Review</span>' +
+    items + '</div>';
 }
 
 // INIT

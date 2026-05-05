@@ -1057,9 +1057,10 @@ function renderMatrixCard(p) {
 
   const members = p.members || [];
 
-  const headerCols = allTasks.map(t =>
-    `<th title="${t.label}">${t.label.length > 20 ? t.label.substring(0,18)+'...' : t.label}</th>`
-  ).join('');
+  const headerCols = allTasks.map(t => {
+    const title = t.label.replace(/^W\d+:\s*/, ''); // Remove "W1: " prefix
+    return `<th title="${title}">${title.length > 20 ? title.substring(0,18)+'...' : title}</th>`;
+  }).join('');
 
   const rows = members.map(m => {
     const emp = m.training_employees;

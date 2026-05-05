@@ -362,7 +362,12 @@ async function openTest(){
   }
   const{data,error}=await query;
   if(error||!data||data.length===0){
-    alert('No test questions available yet. Please contact your training manager.');
+    const mc=document.getElementById('main-content');
+    const notice=document.createElement('div');
+    notice.style.cssText='background:var(--orange-light);color:var(--orange);font-weight:600;font-size:13px;padding:14px 18px;border-radius:10px;margin-bottom:16px;display:flex;align-items:center;gap:8px';
+    notice.innerHTML='⚠️ No test questions available yet. Please contact your training manager.';
+    mc.insertBefore(notice,mc.firstChild);
+    setTimeout(()=>notice.remove(),5000);
     return;
   }
   testQuestions=data.sort(()=>Math.random()-0.5).slice(0,testTotalQ);

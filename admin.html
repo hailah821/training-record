@@ -241,7 +241,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--gray-50);color:var(--gray
       <div class="nav-label">Admin</div>
       <div class="nav-item active" onclick="showPage('dashboard')" id="nav-dashboard"><span>📊</span> Dashboard <span class="nav-badge" id="pending-badge"></span></div>
       <div class="nav-item" onclick="showPage('employees')" id="nav-employees"><span>👥</span> Employees</div>
-      <div class="nav-item" onclick="showPage('plans')" id="nav-plans"><span>📋</span> Training Plans</div>
       <div class="nav-item" onclick="showPage('matrix')" id="nav-matrix"><span>📊</span> Training Matrix</div>
     </nav>
     <div class="sidebar-footer">
@@ -300,18 +299,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--gray-50);color:var(--gray
 
 
 
-    <!-- TRAINING PLANS -->
-    <div class="page" id="page-plans">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
-        <div>
-          <div style="font-size:18px;font-weight:700">Training Plans</div>
-          <div style="font-size:13px;color:var(--gray-400);margin-top:2px">Manage training plans, employees and test questions</div>
-        </div>
-        <button class="btn btn-primary" onclick="openNewTPModal()">+ New Training Plan</button>
-      </div>
-      <div id="tp-container"><div class="loading">Loading...</div></div>
-    </div>
-
     <!-- TRAINING MATRIX -->
     <div class="page" id="page-matrix">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
@@ -321,9 +308,12 @@ body{font-family:'DM Sans',sans-serif;background:var(--gray-50);color:var(--gray
         </div>
         <div style="display:flex;gap:8px;">
           <button class="btn btn-outline btn-sm" onclick="openAddTrainingModal()">+ Add Training</button>
-          <button class="btn btn-primary btn-sm" onclick="openAddEmpToMatrixModal()">+ Add Employee</button>
+          <button class="btn btn-outline btn-sm" onclick="openAddEmpToMatrixModal()">+ Add Employee</button>
+          <button class="btn btn-primary btn-sm" onclick="openNewTPModal()">+ Training Plan</button>
         </div>
       </div>
+      <!-- Training Plans Cards -->
+      <div id="tp-cards-container" style="margin-bottom:20px;"></div>
       <div id="matrix-container"><div class="loading">Loading...</div></div>
     </div>
 
@@ -1024,10 +1014,9 @@ function showPage(name){
   document.getElementById('page-'+name).classList.add('active');
   const nav=document.getElementById('nav-'+name);
   if(nav)nav.classList.add('active');
-  document.getElementById('page-title').textContent={dashboard:'Dashboard',employees:'Employees',plans:'Training Plans',matrix:'Training Matrix',detail:'Employee Detail'}[name]||name;
+  document.getElementById('page-title').textContent={dashboard:'Dashboard',employees:'Employees',matrix:'Training Matrix',detail:'Employee Detail'}[name]||name;
   if(name==='dashboard'||name==='employees')loadEmployees();
-  if(name==='matrix')loadMatrix();
-  if(name==='plans')loadTP();
+  if(name==='matrix'){loadMatrix();loadTPCards();}
 }
 function closeModal(id){document.getElementById(id).classList.remove('show');}
 function openAddModal(){document.getElementById('add-modal').classList.add('show');}
@@ -1193,6 +1182,45 @@ async function saveMatrixEmployees() {
   toast('✓ Employees updated!');
 }
 
+
+// ── TRAINING PLANS CARDS (inside Matrix) ────────────────────────
+async function loadTPCards() {
+  const container = document.getElementById('tp-cards-container');
+  if (!container) return;
+  const { data: tpList } = await sb.from('training_plans')
+    .select('*').neq('name','__matrix__').order('created_at');
+  if (!tpList || !tpList.length) {
+    container.innerHTML = '';
+    return;
+  }
+  for (const p of tpList) {
+    const { data: members } = await sb.from('training_plan_members')
+      .select('employee_id, training_employees(name,emp_id)').eq('plan_id', p.id);
+    p.members = members || [];
+    const { data: questions } = await sb.from('training_questions')
+      .select('id,question,question_type').eq('plan_id', p.id);
+    p.questions = questions || [];
+  }
+  container.innerHTML = tpList.map(p => `
+    <div style="background:white;border:1px solid var(--gray-200);border-radius:12px;overflow:hidden;box-shadow:var(--shadow);margin-bottom:12px;">
+      <div style="background:var(--blue);color:white;padding:12px 18px;display:flex;align-items:center;justify-content:space-between;">
+        <div>
+          <div style="font-size:14px;font-weight:700">${p.name}</div>
+          <div style="font-size:11px;opacity:0.8;margin-top:2px">👥 ${p.members.length} employees · 📝 ${p.questions.length} questions · ✓ Pass: ${p.test_pass_score||0}/${p.test_questions_count||0}</div>
+        </div>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-sm" style="background:rgba(255,255,255,0.2);color:white;border:1px solid rgba(255,255,255,0.3)" onclick="openTPMembers('${p.id}','${p.name}')">👥 Members</button>
+          <button class="btn btn-sm" style="background:rgba(255,255,255,0.2);color:white;border:1px solid rgba(255,255,255,0.3)" onclick="openAddTPQuestion('${p.id}')">+ Question</button>
+          <button class="btn btn-sm" style="background:rgba(234,67,93,0.8);color:white;" onclick="deleteTPlan('${p.id}','${p.name}')">Delete</button>
+        </div>
+      </div>
+      <div style="padding:12px 18px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;">
+        ${p.members.map(m=>`<span style="background:var(--blue-light);color:var(--blue);font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;">${m.training_employees.name}</span>`).join('')}
+        ${p.questions.map((q,i)=>`<span style="background:var(--gray-100);color:var(--gray-600);font-size:11px;padding:3px 10px;border-radius:20px;">Q${i+1}: ${q.question.substring(0,30)}${q.question.length>30?'...':''}</span>`).join('')}
+        ${!p.members.length && !p.questions.length ? '<span style="font-size:12px;color:var(--gray-400)">No members or questions yet</span>' : ''}
+      </div>
+    </div>`).join('');
+}
 
 // ── TRAINING PLANS (NEW) ──────────────────────────────────────────
 let tpType = 'mcq', tpMCQCount = 0, tpTFCount = 0;

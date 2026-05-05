@@ -239,7 +239,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--gray-50);color:var(--gray
     <div class="sidebar-logo"><h2>Training Record</h2><span>Admin Portal</span></div>
     <nav class="sidebar-nav">
       <div class="nav-label">Admin</div>
-      <div class="nav-item active" onclick="showPage('dashboard')" id="nav-dashboard"><span>📊</span> Dashboard <span class="nav-badge" id="pending-badge"></span></div>
+      <div class="nav-item active" onclick="showPage('dashboard')" id="nav-dashboard"><span>📊</span> Dashboard <span class="nav-badge" id="pending-badge"></span><span class="nav-badge" id="review-badge" style="background:var(--orange)"></span></div>
       <div class="nav-item" onclick="showPage('employees')" id="nav-employees"><span>👥</span> Employees</div>
       <div class="nav-item" onclick="showPage('matrix')" id="nav-matrix"><span>📊</span> Training Matrix</div>
     </nav>
@@ -355,7 +355,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--gray-50);color:var(--gray
     </div>
     <div class="form-group">
       <label class="form-label">Question Type</label>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:6px;">
         <div id="type-mcq" onclick="setQType('mcq')" style="border:2px solid var(--blue);background:var(--blue-light);border-radius:10px;padding:14px;cursor:pointer;text-align:center;">
           <div style="font-size:20px;margin-bottom:6px">🔤</div>
           <div style="font-size:13px;font-weight:700;color:var(--blue)">Multiple Choice</div>
@@ -620,7 +620,22 @@ async function viewDetail(id){
     <div class="detail-grid">
       <div class="detail-card"><div class="detail-card-header"><div class="detail-card-title"><div class="dot dot-blue"></div>Order 2</div>${e.order2_done?'<span class="badge green">Confirmed</span>':'<span class="badge gray">Pending</span>'}</div>${orderHTML(e.order2_done,2,e.order2_date,e.order2_task)}</div>
       <div class="detail-card"><div class="detail-card-header"><div class="detail-card-title"><div class="dot dot-green"></div>Sign-off</div></div>
-        <div class="field-row"><span class="field-key">Manager Sign-off</span><span class="field-val">${e.mgr_signed?`<span class="signed-stamp">✓ Signed</span>`:(e.stage>=3?`<button class="btn btn-green btn-sm" onclick="openSignModal('${e.id}')">Sign as Manager</button>`:'<span style="font-size:12px;color:var(--gray-400)">Awaiting stages</span>')}</span></div>
+        ${e.test_pending_review && e.test_answers && Object.keys(e.test_answers).length ? `
+        <div class="field-row" style="flex-direction:column;align-items:start;gap:8px;">
+          <span class="field-key" style="color:var(--orange);font-weight:700">⚠️ Open Answers Pending Review</span>
+          ${Object.entries(e.test_answers).map(([idx,a])=>!a.reviewed?`
+            <div style="background:var(--orange-light);border-radius:8px;padding:12px;width:100%">
+              <div style="font-size:12px;font-weight:600;margin-bottom:4px">${a.question}</div>
+              <div style="font-size:13px;margin-bottom:8px;color:var(--gray-800)">${a.answer||'(no answer)'}</div>
+              <div style="display:flex;gap:8px">
+                <button class="btn btn-green btn-sm" onclick="reviewAnswer('${e.id}',${idx},true)">✓ Correct</button>
+                <button class="btn btn-red btn-sm" onclick="reviewAnswer('${e.id}',${idx},false)">✗ Wrong</button>
+              </div>
+            </div>`:''
+          ).join('')}
+        </div>`:''
+        }
+        <div class="field-row"><span class="field-key">Manager Sign-off</span><span class="field-val">${e.mgr_signed?        <div class="field-row"><span class="field-key">Manager Sign-off</span><span class="field-val">${e.mgr_signed?`<span class="signed-stamp">✓ Signed</span>`:(e.stage>=3?`<button class="btn btn-green btn-sm" onclick="openSignModal('${e.id}')">Sign as Manager</button>`:'<span style="font-size:12px;color:var(--gray-400)">Awaiting stages</span>')}</span></div>
         <div class="field-row"><span class="field-key">Trainee Sign-off</span><span class="field-val">${e.trainee_signed?`<span class="signed-stamp">✓ Signed</span>`:'<span style="font-size:12px;color:var(--gray-400)">Pending</span>'}</span></div>
       </div>
     </div>`;
@@ -1297,11 +1312,12 @@ async function loadTP() {
 }
 
 function openNewTPModal() {
-  tpType = 'mcq'; tpMCQCount = 0; tpTFCount = 0;
+  tpType = 'mcq'; tpMCQCount = 0; tpTFCount = 0; tpOpenCount = 0;
   document.getElementById('tp-name').value = '';
   document.getElementById('tp-pass').value = '';
   document.getElementById('tp-mcq-rows').innerHTML = '';
   document.getElementById('tp-tf-rows').innerHTML = '';
+  document.getElementById('tp-open-rows').innerHTML = '';
   // Populate employees
   const empList = document.getElementById('tp-emp-list');
   empList.innerHTML = employees.length
@@ -1314,17 +1330,36 @@ function openNewTPModal() {
   document.getElementById('tp-modal').classList.add('show');
 }
 
+let tpOpenCount = 0;
 function setTPType(type) {
   tpType = type;
-  ['mcq','tf'].forEach(t => {
+  ['mcq','tf','open'].forEach(t => {
     const el = document.getElementById(`tp-type-${t}`);
+    if(!el) return;
     el.style.border = t===type ? '2px solid var(--blue)' : '2px solid var(--gray-200)';
     el.style.background = t===type ? 'var(--blue-light)' : 'white';
     el.querySelector('div:nth-child(2)').style.color = t===type ? 'var(--blue)' : 'var(--gray-600)';
   });
   document.getElementById('tp-mcq-section').style.display = type==='mcq' ? 'block' : 'none';
   document.getElementById('tp-tf-section').style.display = type==='tf' ? 'block' : 'none';
+  document.getElementById('tp-open-section').style.display = type==='open' ? 'block' : 'none';
   if(type==='tf' && tpTFCount===0) addTPTF();
+  if(type==='open' && tpOpenCount===0) addTPOpen();
+}
+
+function addTPOpen() {
+  tpOpenCount++;
+  const i = tpOpenCount;
+  const div = document.createElement('div');
+  div.id = `tp-open-${i}`;
+  div.style.cssText = 'background:var(--gray-50);border-radius:8px;padding:12px;margin-bottom:8px;border:1px solid var(--gray-200)';
+  div.innerHTML = `
+    <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+      <span style="font-size:12px;font-weight:700;color:var(--blue)">Q${i}</span>
+      <button class="btn btn-xs btn-red" onclick="document.getElementById('tp-open-${i}').remove()">✕</button>
+    </div>
+    <div class="form-group"><input class="form-input" id="tp-oq-${i}" placeholder="Question text (employee will type their answer)"></div>`;
+  document.getElementById('tp-open-rows').appendChild(div);
 }
 
 function addTPMCQ() {
@@ -1392,12 +1427,18 @@ async function saveTP() {
       const ans = document.getElementById(`tp-mans-${i}`)?.value;
       if (q && a && b && c && d) questions.push({ question:q, option_a:a, option_b:b, option_c:c, option_d:d, correct_answer:ans, question_type:'mcq' });
     });
-  } else {
+  } else if (tpType === 'tf') {
     document.querySelectorAll('[id^="tp-tf-"]').forEach(row => {
       const i = row.id.split('-')[2];
       const q = document.getElementById(`tp-tq-${i}`)?.value.trim();
       const ans = document.getElementById(`tp-tans-${i}`)?.value;
       if (q) questions.push({ question:q, option_a:'True', option_b:'False', option_c:'', option_d:'', correct_answer:ans, question_type:'tf' });
+    });
+  } else if (tpType === 'open') {
+    document.querySelectorAll('[id^="tp-open-"]').forEach(row => {
+      const i = row.id.split('-')[2];
+      const q = document.getElementById(`tp-oq-${i}`)?.value.trim();
+      if (q) questions.push({ question:q, option_a:'', option_b:'', option_c:'', option_d:'', correct_answer:'', question_type:'open' });
     });
   }
 
@@ -1475,6 +1516,27 @@ function openAddTPQuestion(planId) {
   document.getElementById('q-plan').value = planId;
 }
 
+
+
+async function reviewAnswer(empId, qIdx, isCorrect) {
+  const { data: emp } = await sb.from('training_employees').select('test_answers,test_score').eq('id',empId).single();
+  if (!emp) return;
+  const answers = emp.test_answers || {};
+  answers[qIdx] = { ...answers[qIdx], reviewed: true, correct: isCorrect };
+  // Check if all open answers reviewed
+  const allReviewed = Object.values(answers).every(a => a.reviewed);
+  const openCorrect = Object.values(answers).filter(a => a.correct).length;
+  const currentScore = emp.test_score || 0;
+  const newScore = currentScore + openCorrect;
+  await sb.from('training_employees').update({
+    test_answers: answers,
+    test_pending_review: !allReviewed,
+    test_score: newScore
+  }).eq('id', empId);
+  toast('✓ Answer reviewed!');
+  await loadEmployees();
+  viewDetail(empId);
+}
 
 // INIT
 if(sessionStorage.getItem('admin_auth')==='1'){
@@ -1570,6 +1632,10 @@ if(sessionStorage.getItem('admin_auth')==='1'){
           <div style="font-size:18px;margin-bottom:4px">✅</div>
           <div style="font-size:12px;font-weight:700;color:var(--gray-600)">True / False</div>
         </div>
+        <div id="tp-type-open" onclick="setTPType('open')" style="border:2px solid var(--gray-200);background:white;border-radius:10px;padding:12px;cursor:pointer;text-align:center;">
+          <div style="font-size:18px;margin-bottom:4px">✏️</div>
+          <div style="font-size:12px;font-weight:700;color:var(--gray-600)">Open Answer</div>
+        </div>
       </div>
     </div>
 
@@ -1589,6 +1655,15 @@ if(sessionStorage.getItem('admin_auth')==='1'){
         <button class="btn btn-outline btn-sm" onclick="addTPTF()">+ Add Question</button>
       </div>
       <div id="tp-tf-rows"></div>
+    </div>
+
+    <!-- Open Answer Questions -->
+    <div id="tp-open-section" style="display:none;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <label class="form-label" style="margin:0">Questions</label>
+        <button class="btn btn-outline btn-sm" onclick="addTPOpen()">+ Add Question</button>
+      </div>
+      <div id="tp-open-rows"></div>
     </div>
 
     <!-- Pass Score -->

@@ -373,7 +373,19 @@ async function openTest(){
   testQuestions=data.sort(()=>Math.random()-0.5).slice(0,testTotalQ);
   testAnswers={};
   document.getElementById('test-questions-container').innerHTML=testQuestions.map((q,i)=>{
+    const isOpen=q.question_type==='open';
     const isTF=q.question_type==='tf';
+    if(isOpen){
+      return `<div class="test-card">
+        <div class="test-q">Q${i+1}. ${q.question}</div>
+        <div style="margin-top:10px">
+          <textarea id="open-ans-${i}" oninput="selectAnswer(${i},this.value)" 
+            placeholder="Write your answer here..."
+            style="width:100%;padding:10px 14px;border:1.5px solid var(--gray-200);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;min-height:80px;resize:vertical;outline:none;"
+            onfocus="this.style.borderColor='var(--blue)'" onblur="this.style.borderColor='var(--gray-200)'"></textarea>
+        </div>
+      </div>`;
+    }
     const opts=isTF
       ?[{v:'A',l:'True'},{v:'B',l:'False'}]
       :['A','B','C','D'].map(opt=>({v:opt,l:q['option_'+opt.toLowerCase()]}));
@@ -408,8 +420,24 @@ async function submitTest(){
     return;
   }
   let correct=0;
-  testQuestions.forEach((q,i)=>{if(testAnswers[i]===q.correct_answer)correct++;});
-  if(correct<testPassScore){
+  const openAnswers={};
+  let hasOpenQuestions=false;
+  testQuestions.forEach((q,i)=>{
+    if(q.question_type==='open'){
+      hasOpenQuestions=true;
+      openAnswers[i]={question:q.question,answer:testAnswers[i]||'',reviewed:false,correct:false};
+    } else {
+      if(testAnswers[i]===q.correct_answer)correct++;
+    }
+  });
+  // For open questions - save for admin review, count non-open questions only
+  const nonOpenTotal=testQuestions.filter(q=>q.question_type!=='open').length;
+  const effectivePassScore=nonOpenTotal>0?Math.ceil(testPassScore*(nonOpenTotal/testTotalQ)):0;
+  if(hasOpenQuestions){
+    // Save open answers for admin review
+    await sb.from('training_employees').update({test_answers:openAnswers,test_pending_review:true}).eq('id',currentEmp.id);
+  }
+  if(nonOpenTotal>0 && correct<effectivePassScore){
     closeTestModal();
     const mc=document.getElementById('main-content');
     const notice=document.createElement('div');

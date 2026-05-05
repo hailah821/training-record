@@ -287,13 +287,17 @@ body{font-family:'DM Sans',sans-serif;background:var(--gray-50);color:var(--gray
 
     <!-- TRAINING MATRIX -->
     <div class="page" id="page-matrix">
-      <div class="card" style="margin-bottom:20px">
-        <div class="section-header">
-          <div class="section-title">Training Matrix</div>
-          <button class="btn btn-primary btn-sm" onclick="openNewMatrixModal()">+ New Training Plan</button>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+        <div>
+          <div style="font-size:18px;font-weight:700">Training Matrix</div>
+          <div style="font-size:13px;color:var(--gray-400);margin-top:2px">Click any cell to mark as completed ✓</div>
         </div>
-        <div id="matrix-plans-list"><div class="loading">Loading...</div></div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-outline btn-sm" onclick="openAddTrainingModal()">+ Add Training</button>
+          <button class="btn btn-primary btn-sm" onclick="openAddEmpToMatrixModal()">+ Add Employee</button>
+        </div>
       </div>
+      <div id="matrix-container"><div class="loading">Loading...</div></div>
     </div>
 
     <!-- DETAIL -->
@@ -1007,224 +1011,155 @@ function toast(msg, type='green'){
 
 
 // ── TRAINING MATRIX ──────────────────────────────────────────────
-let matrixTaskCount = 0;
+// Uses training_matrix table: {id, plan_id(used as matrix_id), employee_id, task_key, completed}
+// We'll use a dedicated matrix_data table concept via JSONB in a simple matrix config
+
+let matrixConfig = null; // {trainings: [...], employees: [...], cells: {empId_taskIdx: true}}
+const MATRIX_KEY = 'matrix_config';
 
 async function loadMatrix() {
-  const container = document.getElementById('matrix-plans-list');
+  const container = document.getElementById('matrix-container');
   container.innerHTML = '<div class="loading">Loading...</div>';
 
-  const { data: mxPlans, error } = await sb.from('training_plans')
-    .select('*').order('created_at');
+  // Load matrix config from training_plans table using a special matrix plan
+  const { data } = await sb.from('training_plans')
+    .select('*').eq('name', '__matrix__').single();
 
-  if (error || !mxPlans || !mxPlans.length) {
-    container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--gray-400)"><div style="font-size:36px;margin-bottom:10px">📊</div><div style="font-size:15px;font-weight:600;margin-bottom:8px">No training plans yet</div><button class="btn btn-primary" onclick="openNewMatrixModal()">+ New Training Plan</button></div>';
+  if (!data) {
+    // Init empty matrix
+    matrixConfig = { trainings: [], employee_ids: [], cells: {} };
+  } else {
+    matrixConfig = data.phases ? data.phases[0] || { trainings: [], employee_ids: [], cells: {} } : { trainings: [], employee_ids: [], cells: {} };
+    matrixConfig._id = data.id;
+  }
+
+  renderMatrix();
+}
+
+function renderMatrix() {
+  const container = document.getElementById('matrix-container');
+  const trainings = matrixConfig.trainings || [];
+  const empIds = matrixConfig.employee_ids || [];
+  const cells = matrixConfig.cells || {};
+
+  // Get employee objects
+  const emps = empIds.map(id => employees.find(e => e.id === id)).filter(Boolean);
+
+  if (!trainings.length && !emps.length) {
+    container.innerHTML = `<div style="text-align:center;padding:48px;color:var(--gray-400)">
+      <div style="font-size:40px;margin-bottom:10px">📊</div>
+      <div style="font-size:15px;font-weight:600;margin-bottom:8px">Training Matrix is empty</div>
+      <div style="font-size:13px;margin-bottom:16px">Add trainings and employees to get started</div>
+    </div>`;
     return;
   }
 
-  for (const p of mxPlans) {
-    const { data: members } = await sb.from('training_plan_members')
-      .select('employee_id, completed_tasks, training_employees(id,name,emp_id,mgr_signed,trainee_signed)')
-      .eq('plan_id', p.id);
-    p.members = members || [];
-  }
-
-  container.innerHTML = mxPlans.map(p => renderMatrixCard(p)).join('');
-}
-
-async function toggleTask(planId, empId, taskKey, currentDone) {
-  const { data: row } = await sb.from('training_plan_members')
-    .select('id, completed_tasks')
-    .eq('plan_id', planId)
-    .eq('employee_id', empId)
-    .single();
-  if (!row) return;
-  const completed = row.completed_tasks || {};
-  if (currentDone) {
-    delete completed[taskKey];
-  } else {
-    completed[taskKey] = true;
-  }
-  await sb.from('training_plan_members')
-    .update({ completed_tasks: completed })
-    .eq('id', row.id);
-  loadMatrix();
-}
-
-function openAddTaskModal(planId) {
-  const taskName = prompt('Enter task name:');
-  if (!taskName || !taskName.trim()) return;
-  addTaskToPlan(planId, taskName.trim());
-}
-
-async function addTaskToPlan(planId, taskName) {
-  const plan = (await sb.from('training_plans').select('phases').eq('id', planId).single()).data;
-  const phases = plan ? JSON.parse(JSON.stringify(plan.phases || [])) : [];
-  if (!phases.length) phases.push({ name: 'Tasks', period: '', weeks: [] });
-  phases[0].weeks.push({ num: phases[0].weeks.length + 1, title: taskName, kpis: '', score: null });
-  await sb.from('training_plans').update({ phases }).eq('id', planId);
-  toast('✓ Task added!');
-  loadMatrix();
-}
-
-function renderMatrixCard(p) {
-  const phases = p.phases || [];
-  const allTasks = [];
-  phases.forEach((ph, pi) => {
-    (ph.weeks || []).forEach((w, wi) => {
-      allTasks.push({ key: `${pi}_${wi}`, title: w.title });
-    });
-  });
-
-  const members = p.members || [];
-
-  const headerCols = allTasks.map(t =>
-    `<th title="${t.title}">${t.title.length > 18 ? t.title.substring(0,16)+'...' : t.title}</th>`
+  // Build table: rows = trainings, cols = employees
+  const empHeaders = emps.map(e =>
+    `<th>${e.name}<div style="font-size:10px;opacity:0.8;font-weight:400">${e.emp_id}</div></th>`
   ).join('');
 
-  const rows = members.map(m => {
-    const emp = m.training_employees;
-    const completed = m.completed_tasks || {};
-    const cols = allTasks.map(t => {
-      const done = completed[t.key] === true;
-      return `<td onclick="toggleTask('${p.id}','${emp.id}','${t.key}',${done})"
-        style="cursor:pointer;font-size:18px;transition:all 0.15s;"
-        title="${done ? 'Click to unmark' : 'Click to mark as completed'}">
-        <span style="color:${done ? 'var(--green)' : 'var(--gray-300)'}">${done ? '✓' : '—'}</span>
-      </td>`;
+  const rows = trainings.map((t, ti) => {
+    const cols = emps.map(e => {
+      const key = `${e.id}_${ti}`;
+      const done = cells[key] === true;
+      return `<td><div class="mx-cell ${done ? 'done' : ''}" onclick="toggleMatrixCell('${e.id}',${ti})">${done ? '✓' : ''}</div></td>`;
     }).join('');
     return `<tr>
-      <td class="emp-name">
-        <strong>${emp.name}</strong>
-        <div style="font-size:10px;color:var(--gray-400)">${emp.emp_id}</div>
+      <td class="task-name">
+        ${t}
+        <button onclick="removeTraining(${ti})" style="margin-left:8px;background:none;border:none;color:var(--gray-400);cursor:pointer;font-size:12px" title="Remove">✕</button>
       </td>
       ${cols}
     </tr>`;
   }).join('');
 
-  const emptyMsg = !members.length
-    ? `<tr><td colspan="${allTasks.length + 1}" style="text-align:center;padding:20px;color:var(--gray-400)">No employees assigned — click Manage to add</td></tr>`
-    : '';
-
-  const noTasks = !allTasks.length
-    ? `<div style="padding:20px;text-align:center;color:var(--gray-400);font-size:13px">No tasks added yet</div>`
-    : `<div style="overflow-x:auto;">
-        <table class="matrix-table">
-          <thead><tr>
-            <th class="emp-col">Employee</th>
-            ${headerCols}
-          </tr></thead>
-          <tbody>${rows}${emptyMsg}</tbody>
-        </table>
-      </div>`;
-
-  return `<div class="mx-plan-card">
-    <div class="mx-plan-header">
-      <div>
-        <div style="font-size:15px;font-weight:700">${p.name}</div>
-        ${p.description ? `<div style="font-size:12px;opacity:0.8;margin-top:2px">${p.description}</div>` : ''}
-        <div style="font-size:11px;opacity:0.7;margin-top:3px">${members.length} employees · ${allTasks.length} tasks</div>
-      </div>
-      <div style="display:flex;gap:6px">
-        <button class="btn btn-sm" style="background:rgba(255,255,255,0.2);color:white;border:1px solid rgba(255,255,255,0.3)" onclick="openAddTaskModal('${p.id}')">+ Task</button>
-        <button class="btn btn-sm" style="background:rgba(255,255,255,0.2);color:white;border:1px solid rgba(255,255,255,0.3)" onclick="openManagePlanMembers('${p.id}','${p.name}')">👥 Members</button>
-        <button class="btn btn-sm" style="background:rgba(234,67,93,0.8);color:white;" onclick="deletePlan('${p.id}','${p.name}')">Delete</button>
-      </div>
-    </div>
-    ${noTasks}
+  container.innerHTML = `<div class="mx-wrapper">
+    <table class="mx-table">
+      <thead><tr>
+        <th class="corner">Training / Employee</th>
+        ${empHeaders}
+      </tr></thead>
+      <tbody>${rows || '<tr><td colspan="100" style="text-align:center;padding:20px;color:var(--gray-400)">No trainings added yet</td></tr>'}</tbody>
+    </table>
   </div>`;
 }
 
-function openNewMatrixModal() {
-  matrixTaskCount = 0;
-  document.getElementById('mx-name').value = '';
-  document.getElementById('mx-tasks').innerHTML = '';
-  // Populate employees
-  const empList = document.getElementById('mx-emp-list');
-  empList.innerHTML = employees.length
-    ? employees.map(e => `<label style="display:flex;align-items:center;gap:8px;padding:6px;cursor:pointer;border-radius:6px;font-size:13px" onmouseover="this.style.background='var(--gray-50)'" onmouseout="this.style.background=''">
-        <input type="checkbox" value="${e.id}" style="accent-color:var(--blue)">
-        <span><strong>${e.name}</strong> <span style="color:var(--gray-400);font-size:11px">${e.emp_id} · ${e.department}</span></span>
-      </label>`).join('')
-    : '<div style="color:var(--gray-400);font-size:13px;padding:8px">No employees yet. Add employees first.</div>';
-  addMatrixTask();
-  document.getElementById('matrix-modal').classList.add('show');
-}
-
-function addMatrixTask() {
-  matrixTaskCount++;
-  const i = matrixTaskCount;
-  const div = document.createElement('div');
-  div.id = `mx-task-${i}`;
-  div.style.cssText = 'display:flex;gap:8px;margin-bottom:8px;align-items:center;';
-  div.innerHTML = `
-    <input class="form-input" id="mx-task-val-${i}" placeholder="Task / Week name" style="flex:1">
-    <button class="btn btn-xs btn-red" onclick="document.getElementById('mx-task-${i}').remove()">✕</button>`;
-  document.getElementById('mx-tasks').appendChild(div);
-}
-
-async function saveMatrixPlan() {
-  const name = document.getElementById('mx-name').value.trim();
-  if (!name) { toast('⚠️ Please enter a plan name', 'red'); return; }
-
-  const tasks = [];
-  document.querySelectorAll('[id^="mx-task-val-"]').forEach(inp => {
-    if (inp.value.trim()) tasks.push(inp.value.trim());
-  });
-  const selectedEmps = [...document.querySelectorAll('#mx-emp-list input:checked')].map(cb => cb.value);
-
-  // Build phases from tasks
-  const phases = [{ name: 'Tasks', period: '', weeks: tasks.map((t, i) => ({ num: i+1, title: t, kpis: '', score: null })) }];
-
-  const { data: planData, error } = await sb.from('training_plans')
-    .insert([{ name, phases, test_questions_count: 10, test_pass_score: 8 }])
-    .select().single();
-
-  if (error) { toast('❌ Error: ' + error.message, 'red'); return; }
-
-  // Add members
-  if (selectedEmps.length) {
-    await sb.from('training_plan_members').insert(
-      selectedEmps.map(eid => ({ plan_id: planData.id, employee_id: eid }))
-    );
+async function saveMatrix() {
+  const phases = [matrixConfig];
+  if (matrixConfig._id) {
+    await sb.from('training_plans').update({ phases }).eq('id', matrixConfig._id);
+  } else {
+    const { data } = await sb.from('training_plans')
+      .insert([{ name: '__matrix__', phases, test_questions_count: 0, test_pass_score: 0 }])
+      .select().single();
+    if (data) matrixConfig._id = data.id;
   }
-
-  closeModal('matrix-modal');
-  toast('✓ Training plan created!');
-  loadMatrix();
 }
 
-async function openManagePlanMembers(planId, planName) {
-  currentPlanId = planId;
-  document.getElementById('members-modal-title').textContent = `Members — ${planName}`;
-  const plan = plans.find(p => p.id === planId);
-  const { data: members } = await sb.from('training_plan_members')
-    .select('employee_id, training_employees(name,emp_id)')
-    .eq('plan_id', planId);
-  const existingIds = (members || []).map(m => m.employee_id);
-  const list = document.getElementById('members-list');
-  list.innerHTML = members && members.length
-    ? members.map(m => `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-bottom:1px solid var(--gray-100)"><div><strong style="font-size:13px">${m.training_employees.name}</strong><span style="font-size:11px;color:var(--gray-400);margin-left:8px">${m.training_employees.emp_id}</span></div><button class="btn btn-red btn-sm" onclick="removeMemberAndRefresh('${planId}','${m.employee_id}')">Remove</button></div>`).join('')
-    : '<div style="text-align:center;padding:16px;color:var(--gray-400);font-size:13px">No members yet</div>';
-  const available = employees.filter(e => !existingIds.includes(e.id));
-  const sel = document.getElementById('member-select');
-  sel.innerHTML = available.length
-    ? available.map(e => `<option value="${e.id}">${e.name} (${e.emp_id})</option>`).join('')
-    : '<option>All employees already added</option>';
-  document.getElementById('members-modal').classList.add('show');
+async function toggleMatrixCell(empId, taskIdx) {
+  const key = `${empId}_${taskIdx}`;
+  if (!matrixConfig.cells) matrixConfig.cells = {};
+  if (matrixConfig.cells[key]) {
+    delete matrixConfig.cells[key];
+  } else {
+    matrixConfig.cells[key] = true;
+  }
+  renderMatrix();
+  await saveMatrix();
 }
 
-async function removeMemberAndRefresh(planId, empId) {
-  await sb.from('training_plan_members').delete().eq('plan_id', planId).eq('employee_id', empId);
-  await openManagePlanMembers(planId, document.getElementById('members-modal-title').textContent.replace('Members — ', ''));
-  loadMatrix();
+function openAddTrainingModal() {
+  document.getElementById('training-name').value = '';
+  document.getElementById('add-training-modal').classList.add('show');
 }
 
-// INIT
-if(sessionStorage.getItem('admin_auth')==='1'){
-  document.getElementById('login-screen').style.display='none';
-  document.getElementById('app').style.display='flex';
-  loadEmployees();
-} else {
+async function saveTraining() {
+  const name = document.getElementById('training-name').value.trim();
+  if (!name) { toast('⚠️ Please enter a training name', 'red'); return; }
+  if (!matrixConfig.trainings) matrixConfig.trainings = [];
+  matrixConfig.trainings.push(name);
+  closeModal('add-training-modal');
+  renderMatrix();
+  await saveMatrix();
+  toast('✓ Training added!');
+}
+
+async function removeTraining(idx) {
+  if (!confirm('Remove this training?')) return;
+  matrixConfig.trainings.splice(idx, 1);
+  // Clean up cells for this training
+  const cells = matrixConfig.cells || {};
+  Object.keys(cells).forEach(k => {
+    if (k.endsWith('_' + idx)) delete cells[k];
+  });
+  renderMatrix();
+  await saveMatrix();
+}
+
+function openAddEmpToMatrixModal() {
+  const empIds = matrixConfig.employee_ids || [];
+  const checkboxes = document.getElementById('matrix-emp-checkboxes');
+  checkboxes.innerHTML = employees.length
+    ? employees.map(e => `
+        <label style="display:flex;align-items:center;gap:8px;padding:7px;cursor:pointer;border-radius:6px;font-size:13px" onmouseover="this.style.background='var(--gray-50)'" onmouseout="this.style.background=''">
+          <input type="checkbox" value="${e.id}" ${empIds.includes(e.id) ? 'checked' : ''} style="accent-color:var(--blue)">
+          <span><strong>${e.name}</strong> <span style="color:var(--gray-400);font-size:11px">${e.emp_id} · ${e.department}</span></span>
+        </label>`).join('')
+    : '<div style="color:var(--gray-400);font-size:13px;padding:8px">No employees yet.</div>';
+  document.getElementById('add-emp-matrix-modal').classList.add('show');
+}
+
+async function saveMatrixEmployees() {
+  const selected = [...document.querySelectorAll('#matrix-emp-checkboxes input:checked')].map(cb => cb.value);
+  matrixConfig.employee_ids = selected;
+  closeModal('add-emp-matrix-modal');
+  renderMatrix();
+  await saveMatrix();
+  toast('✓ Employees updated!');
+}
+
+else {
   document.getElementById('login-screen').style.display='flex';
   document.getElementById('app').style.display='none';
 }
@@ -1251,6 +1186,33 @@ if(sessionStorage.getItem('admin_auth')==='1'){
     <div class="modal-actions">
       <button class="btn btn-outline" onclick="closeModal('matrix-modal')">Cancel</button>
       <button class="btn btn-primary" onclick="saveMatrixPlan()">Create Plan</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ADD TRAINING MODAL -->
+<div class="modal-overlay" id="add-training-modal">
+  <div class="modal">
+    <div class="modal-title">Add Training</div>
+    <div class="modal-sub">Add a new training/task row to the matrix</div>
+    <div class="form-group"><label class="form-label">Training Name</label><input class="form-input" id="training-name" placeholder="e.g. Product Immersion"></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal('add-training-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveTraining()">Add</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD EMPLOYEE TO MATRIX MODAL -->
+<div class="modal-overlay" id="add-emp-matrix-modal">
+  <div class="modal">
+    <div class="modal-title">Add Employee to Matrix</div>
+    <div class="modal-sub">Select employees to show in the matrix</div>
+    <div id="matrix-emp-checkboxes" style="max-height:280px;overflow-y:auto;border:1.5px solid var(--gray-200);border-radius:8px;padding:8px;"></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal('add-emp-matrix-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveMatrixEmployees()">Save</button>
     </div>
   </div>
 </div>

@@ -777,6 +777,12 @@ async function saveAllQuestions(){
   const{error}=await sb.from('training_questions').insert(questions);
   if(error){toast('❌ Error: '+error.message,'red');return;}
   closeModal('q-modal');
+  // Auto-update pass score = total questions for linked plan
+  if(plan_id){
+    const{data:countData}=await sb.from('training_questions').select('id',{count:'exact'}).eq('plan_id',plan_id);
+    const total=(countData?.length||0)+questions.length;
+    await sb.from('training_plans').update({test_questions_count:total,test_pass_score:total}).eq('id',plan_id);
+  }
   loadQuestions();
   toast(`✓ ${questions.length} question(s) saved!`);
 }

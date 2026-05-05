@@ -1021,10 +1021,9 @@ async function loadMatrix() {
     return;
   }
 
-  // Load members for each plan
   for (const p of mxPlans) {
     const { data: members } = await sb.from('training_plan_members')
-      .select('employee_id, training_employees(id,name,emp_id,mgr_signed,trainee_signed)')
+      .select('employee_id, completed_tasks, training_employees(id,name,emp_id,mgr_signed,trainee_signed)')
       .eq('plan_id', p.id);
     p.members = members || [];
   }
@@ -1032,54 +1031,91 @@ async function loadMatrix() {
   container.innerHTML = mxPlans.map(p => renderMatrixCard(p)).join('');
 }
 
+async function toggleTask(planId, empId, taskKey, currentDone) {
+  const { data: row } = await sb.from('training_plan_members')
+    .select('id, completed_tasks')
+    .eq('plan_id', planId)
+    .eq('employee_id', empId)
+    .single();
+  if (!row) return;
+  const completed = row.completed_tasks || {};
+  if (currentDone) {
+    delete completed[taskKey];
+  } else {
+    completed[taskKey] = true;
+  }
+  await sb.from('training_plan_members')
+    .update({ completed_tasks: completed })
+    .eq('id', row.id);
+  loadMatrix();
+}
+
+function openAddTaskModal(planId) {
+  const taskName = prompt('Enter task name:');
+  if (!taskName || !taskName.trim()) return;
+  addTaskToPlan(planId, taskName.trim());
+}
+
+async function addTaskToPlan(planId, taskName) {
+  const plan = (await sb.from('training_plans').select('phases').eq('id', planId).single()).data;
+  const phases = plan ? JSON.parse(JSON.stringify(plan.phases || [])) : [];
+  if (!phases.length) phases.push({ name: 'Tasks', period: '', weeks: [] });
+  phases[0].weeks.push({ num: phases[0].weeks.length + 1, title: taskName, kpis: '', score: null });
+  await sb.from('training_plans').update({ phases }).eq('id', planId);
+  toast('✓ Task added!');
+  loadMatrix();
+}
+
 function renderMatrixCard(p) {
   const phases = p.phases || [];
-  // Collect all weeks across all phases
   const allTasks = [];
   phases.forEach((ph, pi) => {
     (ph.weeks || []).forEach((w, wi) => {
-      allTasks.push({ label: `W${w.num||wi+1}: ${w.title}`, phase: ph.name });
+      allTasks.push({ key: `${pi}_${wi}`, title: w.title });
     });
   });
 
-  if (!allTasks.length) {
-    return `<div class="mx-plan-card">
-      <div class="mx-plan-header">
-        <div>
-          <div style="font-size:15px;font-weight:700">${p.name}</div>
-          ${p.description ? `<div style="font-size:12px;opacity:0.8;margin-top:2px">${p.description}</div>` : ''}
-        </div>
-        <button class="btn btn-sm" style="background:rgba(234,67,93,0.8);color:white;" onclick="deletePlan('${p.id}','${p.name}')">Delete</button>
-      </div>
-      <div style="padding:20px;text-align:center;color:var(--gray-400);font-size:13px">No tasks/weeks added yet</div>
-    </div>`;
-  }
-
   const members = p.members || [];
 
-  const headerCols = allTasks.map(t => {
-    const title = t.label.replace(/^W\d+:\s*/, ''); // Remove "W1: " prefix
-    return `<th title="${title}">${title.length > 20 ? title.substring(0,18)+'...' : title}</th>`;
-  }).join('');
+  const headerCols = allTasks.map(t =>
+    `<th title="${t.title}">${t.title.length > 18 ? t.title.substring(0,16)+'...' : t.title}</th>`
+  ).join('');
 
   const rows = members.map(m => {
     const emp = m.training_employees;
-    const certified = emp.mgr_signed && emp.trainee_signed;
-    const cols = allTasks.map(() =>
-      `<td class="matrix-check ${certified ? 'done' : 'pending'}">${certified ? '✓' : '—'}</td>`
-    ).join('');
+    const completed = m.completed_tasks || {};
+    const cols = allTasks.map(t => {
+      const done = completed[t.key] === true;
+      return `<td onclick="toggleTask('${p.id}','${emp.id}','${t.key}',${done})"
+        style="cursor:pointer;font-size:18px;transition:all 0.15s;"
+        title="${done ? 'Click to unmark' : 'Click to mark as completed'}">
+        <span style="color:${done ? 'var(--green)' : 'var(--gray-300)'}">${done ? '✓' : '—'}</span>
+      </td>`;
+    }).join('');
     return `<tr>
       <td class="emp-name">
-        ${emp.name}
+        <strong>${emp.name}</strong>
         <div style="font-size:10px;color:var(--gray-400)">${emp.emp_id}</div>
       </td>
       ${cols}
     </tr>`;
   }).join('');
 
-  const emptyRows = !members.length
-    ? `<tr><td colspan="${allTasks.length + 1}" style="text-align:center;padding:20px;color:var(--gray-400)">No employees assigned yet</td></tr>`
+  const emptyMsg = !members.length
+    ? `<tr><td colspan="${allTasks.length + 1}" style="text-align:center;padding:20px;color:var(--gray-400)">No employees assigned — click Manage to add</td></tr>`
     : '';
+
+  const noTasks = !allTasks.length
+    ? `<div style="padding:20px;text-align:center;color:var(--gray-400);font-size:13px">No tasks added yet</div>`
+    : `<div style="overflow-x:auto;">
+        <table class="matrix-table">
+          <thead><tr>
+            <th class="emp-col">Employee</th>
+            ${headerCols}
+          </tr></thead>
+          <tbody>${rows}${emptyMsg}</tbody>
+        </table>
+      </div>`;
 
   return `<div class="mx-plan-card">
     <div class="mx-plan-header">
@@ -1089,19 +1125,12 @@ function renderMatrixCard(p) {
         <div style="font-size:11px;opacity:0.7;margin-top:3px">${members.length} employees · ${allTasks.length} tasks</div>
       </div>
       <div style="display:flex;gap:6px">
-        <button class="btn btn-sm" style="background:rgba(255,255,255,0.2);color:white;border:1px solid rgba(255,255,255,0.3)" onclick="openManagePlanMembers('${p.id}','${p.name}')">👥 Manage</button>
+        <button class="btn btn-sm" style="background:rgba(255,255,255,0.2);color:white;border:1px solid rgba(255,255,255,0.3)" onclick="openAddTaskModal('${p.id}')">+ Task</button>
+        <button class="btn btn-sm" style="background:rgba(255,255,255,0.2);color:white;border:1px solid rgba(255,255,255,0.3)" onclick="openManagePlanMembers('${p.id}','${p.name}')">👥 Members</button>
         <button class="btn btn-sm" style="background:rgba(234,67,93,0.8);color:white;" onclick="deletePlan('${p.id}','${p.name}')">Delete</button>
       </div>
     </div>
-    <div style="overflow-x:auto;">
-      <table class="matrix-table">
-        <thead><tr>
-          <th class="emp-col">Employee</th>
-          ${headerCols}
-        </tr></thead>
-        <tbody>${rows}${emptyRows}</tbody>
-      </table>
-    </div>
+    ${noTasks}
   </div>`;
 }
 

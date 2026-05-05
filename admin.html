@@ -241,6 +241,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--gray-50);color:var(--gray
       <div class="nav-label">Admin</div>
       <div class="nav-item active" onclick="showPage('dashboard')" id="nav-dashboard"><span>📊</span> Dashboard <span class="nav-badge" id="pending-badge"></span></div>
       <div class="nav-item" onclick="showPage('employees')" id="nav-employees"><span>👥</span> Employees</div>
+      <div class="nav-item" onclick="showPage('plans')" id="nav-plans"><span>📋</span> Training Plans</div>
       <div class="nav-item" onclick="showPage('matrix')" id="nav-matrix"><span>📊</span> Training Matrix</div>
     </nav>
     <div class="sidebar-footer">
@@ -298,6 +299,18 @@ body{font-family:'DM Sans',sans-serif;background:var(--gray-50);color:var(--gray
 
 
 
+
+    <!-- TRAINING PLANS -->
+    <div class="page" id="page-plans">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+        <div>
+          <div style="font-size:18px;font-weight:700">Training Plans</div>
+          <div style="font-size:13px;color:var(--gray-400);margin-top:2px">Manage training plans, employees and test questions</div>
+        </div>
+        <button class="btn btn-primary" onclick="openNewTPModal()">+ New Training Plan</button>
+      </div>
+      <div id="tp-container"><div class="loading">Loading...</div></div>
+    </div>
 
     <!-- TRAINING MATRIX -->
     <div class="page" id="page-matrix">
@@ -1011,9 +1024,10 @@ function showPage(name){
   document.getElementById('page-'+name).classList.add('active');
   const nav=document.getElementById('nav-'+name);
   if(nav)nav.classList.add('active');
-  document.getElementById('page-title').textContent={dashboard:'Dashboard',employees:'Employees',matrix:'Training Matrix',detail:'Employee Detail'}[name]||name;
+  document.getElementById('page-title').textContent={dashboard:'Dashboard',employees:'Employees',plans:'Training Plans',matrix:'Training Matrix',detail:'Employee Detail'}[name]||name;
   if(name==='dashboard'||name==='employees')loadEmployees();
   if(name==='matrix')loadMatrix();
+  if(name==='plans')loadTP();
 }
 function closeModal(id){document.getElementById(id).classList.remove('show');}
 function openAddModal(){document.getElementById('add-modal').classList.add('show');}
@@ -1179,6 +1193,261 @@ async function saveMatrixEmployees() {
   toast('✓ Employees updated!');
 }
 
+
+// ── TRAINING PLANS (NEW) ──────────────────────────────────────────
+let tpType = 'mcq', tpMCQCount = 0, tpTFCount = 0;
+
+async function loadTP() {
+  const container = document.getElementById('tp-container');
+  container.innerHTML = '<div class="loading">Loading...</div>';
+  const { data: tpList } = await sb.from('training_plans')
+    .select('*').neq('name','__matrix__').order('created_at');
+
+  if (!tpList || !tpList.length) {
+    container.innerHTML = `<div style="text-align:center;padding:48px;color:var(--gray-400)">
+      <div style="font-size:40px;margin-bottom:10px">📋</div>
+      <div style="font-size:15px;font-weight:600;margin-bottom:8px">No training plans yet</div>
+      <button class="btn btn-primary" onclick="openNewTPModal()">+ New Training Plan</button>
+    </div>`;
+    return;
+  }
+
+  // Load members and questions for each plan
+  for (const p of tpList) {
+    const { data: members } = await sb.from('training_plan_members')
+      .select('employee_id, training_employees(name,emp_id)')
+      .eq('plan_id', p.id);
+    p.members = members || [];
+    const { data: questions } = await sb.from('training_questions')
+      .select('id,question,question_type,correct_answer').eq('plan_id', p.id);
+    p.questions = questions || [];
+  }
+
+  container.innerHTML = tpList.map(p => `
+    <div style="background:white;border:1px solid var(--gray-200);border-radius:12px;overflow:hidden;box-shadow:var(--shadow);margin-bottom:16px;">
+      <div style="background:var(--blue);color:white;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;">
+        <div>
+          <div style="font-size:15px;font-weight:700">${p.name}</div>
+          <div style="font-size:11px;opacity:0.8;margin-top:2px">
+            👥 ${p.members.length} employees · 
+            📝 ${p.questions.length} questions · 
+            ✓ Pass: ${p.test_pass_score||p.questions.length||0}/${p.questions.length||0}
+          </div>
+        </div>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-sm" style="background:rgba(255,255,255,0.2);color:white;border:1px solid rgba(255,255,255,0.3)" onclick="openTPMembers('${p.id}','${p.name}')">👥 Members</button>
+          <button class="btn btn-sm" style="background:rgba(234,67,93,0.8);color:white;" onclick="deleteTPlan('${p.id}','${p.name}')">Delete</button>
+        </div>
+      </div>
+      <div style="padding:16px 20px;">
+        <!-- Members -->
+        <div style="margin-bottom:12px;">
+          <div style="font-size:12px;font-weight:700;color:var(--gray-600);margin-bottom:6px;">EMPLOYEES</div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;">
+            ${p.members.length
+              ? p.members.map(m=>`<span style="background:var(--blue-light);color:var(--blue);font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;">${m.training_employees.name}</span>`).join('')
+              : '<span style="font-size:12px;color:var(--gray-400)">No employees assigned</span>'}
+          </div>
+        </div>
+        <!-- Questions -->
+        <div>
+          <div style="font-size:12px;font-weight:700;color:var(--gray-600);margin-bottom:6px;">QUESTIONS (${p.questions.length})</div>
+          ${p.questions.length
+            ? p.questions.map((q,i)=>`
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 10px;background:var(--gray-50);border-radius:8px;margin-bottom:6px;font-size:13px;">
+                <div>
+                  <span style="background:${q.question_type==='tf'?'#FDF6E3':'var(--green-light)'};color:${q.question_type==='tf'?'#b45309':'var(--green)'};font-size:10px;font-weight:700;padding:2px 6px;border-radius:6px;margin-right:6px">${q.question_type==='tf'?'T/F':'MCQ'}</span>
+                  ${q.question}
+                </div>
+                <button class="btn btn-xs btn-red" onclick="deleteTPQuestion('${q.id}','${p.id}')">✕</button>
+              </div>`).join('')
+            : '<div style="font-size:12px;color:var(--gray-400)">No questions yet</div>'}
+          <button class="btn btn-outline btn-sm" style="margin-top:8px" onclick="openAddTPQuestion('${p.id}')">+ Add Question</button>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+function openNewTPModal() {
+  tpType = 'mcq'; tpMCQCount = 0; tpTFCount = 0;
+  document.getElementById('tp-name').value = '';
+  document.getElementById('tp-pass').value = '';
+  document.getElementById('tp-mcq-rows').innerHTML = '';
+  document.getElementById('tp-tf-rows').innerHTML = '';
+  // Populate employees
+  const empList = document.getElementById('tp-emp-list');
+  empList.innerHTML = employees.length
+    ? employees.map(e => `<label style="display:flex;align-items:center;gap:8px;padding:6px;cursor:pointer;border-radius:6px;font-size:13px" onmouseover="this.style.background='var(--gray-50)'" onmouseout="this.style.background=''">
+        <input type="checkbox" value="${e.id}" style="accent-color:var(--blue)">
+        <span><strong>${e.name}</strong> <span style="color:var(--gray-400);font-size:11px">${e.emp_id} · ${e.department}</span></span>
+      </label>`).join('')
+    : '<div style="color:var(--gray-400);font-size:13px;padding:8px">No employees yet.</div>';
+  addTPMCQ();
+  document.getElementById('tp-modal').classList.add('show');
+}
+
+function setTPType(type) {
+  tpType = type;
+  ['mcq','tf'].forEach(t => {
+    const el = document.getElementById(`tp-type-${t}`);
+    el.style.border = t===type ? '2px solid var(--blue)' : '2px solid var(--gray-200)';
+    el.style.background = t===type ? 'var(--blue-light)' : 'white';
+    el.querySelector('div:nth-child(2)').style.color = t===type ? 'var(--blue)' : 'var(--gray-600)';
+  });
+  document.getElementById('tp-mcq-section').style.display = type==='mcq' ? 'block' : 'none';
+  document.getElementById('tp-tf-section').style.display = type==='tf' ? 'block' : 'none';
+  if(type==='tf' && tpTFCount===0) addTPTF();
+}
+
+function addTPMCQ() {
+  tpMCQCount++;
+  const i = tpMCQCount;
+  const div = document.createElement('div');
+  div.id = `tp-mcq-${i}`;
+  div.style.cssText = 'background:var(--gray-50);border-radius:8px;padding:12px;margin-bottom:8px;border:1px solid var(--gray-200)';
+  div.innerHTML = `
+    <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+      <span style="font-size:12px;font-weight:700;color:var(--blue)">Q${i}</span>
+      <button class="btn btn-xs btn-red" onclick="document.getElementById('tp-mcq-${i}').remove()">✕</button>
+    </div>
+    <div class="form-group"><input class="form-input" id="tp-mq-${i}" placeholder="Question text"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+      <input class="form-input" id="tp-ma-${i}" placeholder="Option A" style="font-size:12px;padding:7px 10px">
+      <input class="form-input" id="tp-mb-${i}" placeholder="Option B" style="font-size:12px;padding:7px 10px">
+      <input class="form-input" id="tp-mc-${i}" placeholder="Option C" style="font-size:12px;padding:7px 10px">
+      <input class="form-input" id="tp-md-${i}" placeholder="Option D" style="font-size:12px;padding:7px 10px">
+    </div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <span style="font-size:12px;font-weight:600;color:var(--gray-600)">Correct:</span>
+      <select class="form-input" id="tp-mans-${i}" style="width:auto;padding:5px 10px;font-size:12px">
+        <option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="D">D</option>
+      </select>
+    </div>`;
+  document.getElementById('tp-mcq-rows').appendChild(div);
+}
+
+function addTPTF() {
+  tpTFCount++;
+  const i = tpTFCount;
+  const div = document.createElement('div');
+  div.id = `tp-tf-${i}`;
+  div.style.cssText = 'background:var(--gray-50);border-radius:8px;padding:12px;margin-bottom:8px;border:1px solid var(--gray-200)';
+  div.innerHTML = `
+    <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+      <span style="font-size:12px;font-weight:700;color:var(--blue)">Q${i}</span>
+      <button class="btn btn-xs btn-red" onclick="document.getElementById('tp-tf-${i}').remove()">✕</button>
+    </div>
+    <div class="form-group"><input class="form-input" id="tp-tq-${i}" placeholder="Question text"></div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <span style="font-size:12px;font-weight:600;color:var(--gray-600)">Correct:</span>
+      <select class="form-input" id="tp-tans-${i}" style="width:auto;padding:5px 10px;font-size:12px">
+        <option value="A">True</option><option value="B">False</option>
+      </select>
+    </div>`;
+  document.getElementById('tp-tf-rows').appendChild(div);
+}
+
+async function saveTP() {
+  const name = document.getElementById('tp-name').value.trim();
+  if (!name) { toast('⚠️ Please enter a plan name', 'red'); return; }
+
+  // Collect questions
+  const questions = [];
+  if (tpType === 'mcq') {
+    document.querySelectorAll('[id^="tp-mcq-"]').forEach(row => {
+      const i = row.id.split('-')[2];
+      const q = document.getElementById(`tp-mq-${i}`)?.value.trim();
+      const a = document.getElementById(`tp-ma-${i}`)?.value.trim();
+      const b = document.getElementById(`tp-mb-${i}`)?.value.trim();
+      const c = document.getElementById(`tp-mc-${i}`)?.value.trim();
+      const d = document.getElementById(`tp-md-${i}`)?.value.trim();
+      const ans = document.getElementById(`tp-mans-${i}`)?.value;
+      if (q && a && b && c && d) questions.push({ question:q, option_a:a, option_b:b, option_c:c, option_d:d, correct_answer:ans, question_type:'mcq' });
+    });
+  } else {
+    document.querySelectorAll('[id^="tp-tf-"]').forEach(row => {
+      const i = row.id.split('-')[2];
+      const q = document.getElementById(`tp-tq-${i}`)?.value.trim();
+      const ans = document.getElementById(`tp-tans-${i}`)?.value;
+      if (q) questions.push({ question:q, option_a:'True', option_b:'False', option_c:'', option_d:'', correct_answer:ans, question_type:'tf' });
+    });
+  }
+
+  const passInput = parseInt(document.getElementById('tp-pass').value);
+  const test_questions_count = questions.length || 1;
+  const test_pass_score = passInput || test_questions_count;
+
+  // Create plan
+  const { data: planData, error } = await sb.from('training_plans')
+    .insert([{ name, phases:[], test_questions_count, test_pass_score }])
+    .select().single();
+  if (error) { toast('❌ Error: ' + error.message, 'red'); return; }
+
+  // Add questions
+  if (questions.length) {
+    await sb.from('training_questions').insert(
+      questions.map(q => ({ ...q, plan_id: planData.id }))
+    );
+  }
+
+  // Add members
+  const selectedEmps = [...document.querySelectorAll('#tp-emp-list input:checked')].map(cb => cb.value);
+  if (selectedEmps.length) {
+    await sb.from('training_plan_members').insert(
+      selectedEmps.map(eid => ({ plan_id: planData.id, employee_id: eid }))
+    );
+  }
+
+  closeModal('tp-modal');
+  toast('✓ Training plan created!');
+  loadTP();
+}
+
+async function deleteTPlan(id, name) {
+  if (!confirm(`Delete plan "${name}"?`)) return;
+  await sb.from('training_plans').delete().eq('id', id);
+  loadTP();
+}
+
+async function deleteTPQuestion(qid, planId) {
+  await sb.from('training_questions').delete().eq('id', qid);
+  // Update pass score
+  const { data } = await sb.from('training_questions').select('id').eq('plan_id', planId);
+  const count = data ? data.length : 0;
+  await sb.from('training_plans').update({ test_questions_count: count, test_pass_score: count }).eq('id', planId);
+  loadTP();
+}
+
+async function openTPMembers(planId, planName) {
+  currentPlanId = planId;
+  document.getElementById('members-modal-title').textContent = `Members — ${planName}`;
+  const { data: members } = await sb.from('training_plan_members')
+    .select('employee_id, training_employees(name,emp_id)')
+    .eq('plan_id', planId);
+  const existingIds = (members||[]).map(m => m.employee_id);
+  const list = document.getElementById('members-list');
+  list.innerHTML = members && members.length
+    ? members.map(m => `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-bottom:1px solid var(--gray-100)">
+        <div><strong style="font-size:13px">${m.training_employees.name}</strong><span style="font-size:11px;color:var(--gray-400);margin-left:8px">${m.training_employees.emp_id}</span></div>
+        <button class="btn btn-red btn-sm" onclick="removeMember('${planId}','${m.employee_id}')">Remove</button>
+      </div>`).join('')
+    : '<div style="text-align:center;padding:16px;color:var(--gray-400);font-size:13px">No members yet</div>';
+  const available = employees.filter(e => !existingIds.includes(e.id));
+  const sel = document.getElementById('member-select');
+  sel.innerHTML = available.length
+    ? available.map(e => `<option value="${e.id}">${e.name} (${e.emp_id})</option>`).join('')
+    : '<option>All employees already added</option>';
+  document.getElementById('members-modal').classList.add('show');
+}
+
+function openAddTPQuestion(planId) {
+  // Open existing q-modal but set plan
+  tpType = 'mcq'; qType = 'mcq';
+  document.getElementById('q-modal').classList.add('show');
+  document.getElementById('q-plan').value = planId;
+}
+
+
 // INIT
 if(sessionStorage.getItem('admin_auth')==='1'){
   document.getElementById('login-screen').style.display='none';
@@ -1238,6 +1507,72 @@ if(sessionStorage.getItem('admin_auth')==='1'){
     <div class="modal-actions">
       <button class="btn btn-outline" onclick="closeModal('add-emp-matrix-modal')">Cancel</button>
       <button class="btn btn-primary" onclick="saveMatrixEmployees()">Save</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- NEW TRAINING PLAN MODAL -->
+<div class="modal-overlay" id="tp-modal">
+  <div class="modal" style="width:600px;max-height:90vh;overflow-y:auto;">
+    <div class="modal-title">New Training Plan</div>
+    <div class="modal-sub">Set up plan name, employees, questions and pass score</div>
+
+    <!-- Plan Name -->
+    <div class="form-group">
+      <label class="form-label">Training Plan Name</label>
+      <input class="form-input" id="tp-name" placeholder="e.g. Ygii Tech Training — 3 Month">
+    </div>
+
+    <!-- Employees -->
+    <div class="form-group">
+      <label class="form-label">Employees</label>
+      <div id="tp-emp-list" style="max-height:160px;overflow-y:auto;border:1.5px solid var(--gray-200);border-radius:8px;padding:8px;"></div>
+    </div>
+
+    <!-- Questions -->
+    <div class="form-group">
+      <label class="form-label">Question Type</label>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px;">
+        <div id="tp-type-mcq" onclick="setTPType('mcq')" style="border:2px solid var(--blue);background:var(--blue-light);border-radius:10px;padding:12px;cursor:pointer;text-align:center;">
+          <div style="font-size:18px;margin-bottom:4px">🔤</div>
+          <div style="font-size:12px;font-weight:700;color:var(--blue)">Multiple Choice</div>
+        </div>
+        <div id="tp-type-tf" onclick="setTPType('tf')" style="border:2px solid var(--gray-200);background:white;border-radius:10px;padding:12px;cursor:pointer;text-align:center;">
+          <div style="font-size:18px;margin-bottom:4px">✅</div>
+          <div style="font-size:12px;font-weight:700;color:var(--gray-600)">True / False</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MCQ Questions -->
+    <div id="tp-mcq-section">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <label class="form-label" style="margin:0">Questions</label>
+        <button class="btn btn-outline btn-sm" onclick="addTPMCQ()">+ Add Question</button>
+      </div>
+      <div id="tp-mcq-rows"></div>
+    </div>
+
+    <!-- TF Questions -->
+    <div id="tp-tf-section" style="display:none;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <label class="form-label" style="margin:0">Questions</label>
+        <button class="btn btn-outline btn-sm" onclick="addTPTF()">+ Add Question</button>
+      </div>
+      <div id="tp-tf-rows"></div>
+    </div>
+
+    <!-- Pass Score -->
+    <div class="form-group" style="margin-top:12px;">
+      <label class="form-label">Pass Score (min correct answers)</label>
+      <input class="form-input" id="tp-pass" type="number" min="1" placeholder="e.g. 8 — leave empty to auto-set">
+      <div style="font-size:11px;color:var(--gray-400);margin-top:4px">Leave empty to auto-set = total questions</div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal('tp-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveTP()">Create Plan</button>
     </div>
   </div>
 </div>
